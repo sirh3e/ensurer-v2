@@ -1,0 +1,110 @@
+# runsd configuration template
+# Copy to ~/.config/runsd/config.toml and edit as needed.
+#
+# Settings are merged in order:
+#   built-in defaults  →  this file  →  RUNSD_* environment variables
+#
+# Generate a fresh copy with all current defaults:
+#   runsd --init-config > ~/.config/runsd/config.toml
+
+# ── Server ────────────────────────────────────────────────────────────────────
+
+[server]
+
+# Directory where result files and the SQLite database are stored.
+# Default: ~/.local/share/runsd  (Windows: %APPDATA%\runsd)
+# data_dir = "~/.local/share/runsd"
+
+# Unix domain socket path (macOS / Linux).
+# The runs TUI client must point to the same path.
+# Default: $XDG_RUNTIME_DIR/runsd.sock  →  /tmp/runsd.sock
+# socket_path = "/run/user/1000/runsd.sock"
+
+# TCP port (Windows only — ignored on Unix).
+# Default: 4242
+# port = 4242
+
+# Maximum number of calculations that run simultaneously.
+# Default: 8
+# max_concurrent_calculations = 8
+
+# ── External API client ───────────────────────────────────────────────────────
+#
+# runsd forwards each calculation to an external HTTP service.
+# Contract: POST {base_url}/calculations/{kind}
+# See docs/external-api.md for the full request / response specification.
+
+[external_api]
+
+# Root URL of the external calculation API — no trailing slash.
+# RUNSD_EXTERNAL_API_BASE_URL overrides this.
+base_url = "https://api.example.com"
+
+# Per-request timeout in seconds. Requests that exceed this are treated as
+# transient errors and retried according to [retry] settings.
+# Default: 30
+request_timeout_s = 30
+
+# Send an Idempotency-Key header so the external API can de-duplicate retries.
+# Set to false if the API does not support idempotency keys.
+# Default: true
+supports_idempotency = true
+
+# ── Retry ─────────────────────────────────────────────────────────────────────
+#
+# Transient errors (HTTP 408, 429, 5xx) are retried with jittered exponential
+# back-off: random delay in [0, min(base_delay_ms × 2^(attempt-1), max_delay_ms)].
+
+[retry]
+
+# Delay before the second attempt (milliseconds).
+# Default: 1000
+base_delay_ms = 1000
+
+# Upper bound on the back-off delay (milliseconds).
+# Default: 300000  (5 minutes)
+max_delay_ms = 300000
+
+# Total number of attempts before a calculation is marked as failed.
+# Default: 5
+max_attempts = 5
+
+# ── Lease ─────────────────────────────────────────────────────────────────────
+#
+# A running calculation holds a lease so the watchdog can detect crashes.
+
+[lease]
+
+# How often a running calculation renews its lease (seconds).
+# Default: 10
+heartbeat_interval_s = 10
+
+# A lease is expired if no heartbeat is received within this window (seconds).
+# Must be greater than heartbeat_interval_s.
+# Default: 60
+expiry_s = 60
+
+# How often the watchdog scans for expired leases (seconds).
+# Default: 30
+watchdog_interval_s = 30
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+
+[logging]
+
+# Log level written to the rotating log file (trace/debug/info/warn/error).
+# Default: info
+file_level = "info"
+
+# Log level written to stderr.
+# Default: warn
+stderr_level = "warn"
+
+# Log file location.
+# Default: ~/.local/state/runsd/runsd.log
+# file_path = "~/.local/state/runsd/runsd.log"
+
+# Delete SSE events older than this many days to keep the database compact.
+# Set to 0 to keep events forever.
+# Default: 30
+event_retention_days = 30
