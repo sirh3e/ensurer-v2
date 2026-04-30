@@ -1,4 +1,9 @@
-use std::{path::{Path, PathBuf}, pin::Pin, sync::Arc, time::Duration};
+use std::{
+    path::{Path, PathBuf},
+    pin::Pin,
+    sync::Arc,
+    time::Duration,
+};
 
 use chrono::Utc;
 use futures::Future;
@@ -16,12 +21,7 @@ use common::{
 };
 
 use crate::{
-    actor::{
-        db::DbHandle,
-        event_bus::EventBus,
-        run::RunNotification,
-        worker_pool::WorkerPool,
-    },
+    actor::{db::DbHandle, event_bus::EventBus, run::RunNotification, worker_pool::WorkerPool},
     config::{ExternalApiConfig, LeaseConfig, RetryConfig},
 };
 
@@ -76,7 +76,9 @@ impl CalcApiClient for ReqwestCalcClient {
             }
 
             match req.send().await {
-                Err(e) => ApiOutcome::TransientError { message: e.to_string() },
+                Err(e) => ApiOutcome::TransientError {
+                    message: e.to_string(),
+                },
                 Ok(resp) => {
                     let status = resp.status();
                     if status.is_success() {
@@ -92,7 +94,9 @@ impl CalcApiClient for ReqwestCalcClient {
                                 }
                                 ApiOutcome::Succeeded { result_path }
                             }
-                            Err(e) => ApiOutcome::TransientError { message: e.to_string() },
+                            Err(e) => ApiOutcome::TransientError {
+                                message: e.to_string(),
+                            },
                         }
                     } else if status == reqwest::StatusCode::TOO_MANY_REQUESTS
                         || status == reqwest::StatusCode::REQUEST_TIMEOUT
@@ -195,7 +199,8 @@ impl CalcActor {
                         break;
                     }
 
-                    self.emit_status(CalcStatus::Pending, CalcStatus::Running).await;
+                    self.emit_status(CalcStatus::Pending, CalcStatus::Running)
+                        .await;
 
                     let api = Arc::clone(&self.api);
                     let kind = self.kind.clone();
@@ -239,18 +244,30 @@ impl CalcActor {
     async fn handle_success(&self, result_path: PathBuf) {
         let path_str = result_path.to_string_lossy().to_string();
         let _ = self.db.calc_succeeded(self.id.clone(), path_str).await;
-        self.emit_status(CalcStatus::Running, CalcStatus::Succeeded).await;
-        let _ = self.run_tx.send(RunNotification::CalcFinished(self.id.clone())).await;
+        self.emit_status(CalcStatus::Running, CalcStatus::Succeeded)
+            .await;
+        let _ = self
+            .run_tx
+            .send(RunNotification::CalcFinished(self.id.clone()))
+            .await;
         info!(calc_id = %self.id, "calculation succeeded");
     }
 
     async fn handle_permanent_error(&self, message: String) {
         let _ = self
             .db
-            .calc_failed(self.id.clone(), ErrorKind::Permanent.to_string(), message.clone())
+            .calc_failed(
+                self.id.clone(),
+                ErrorKind::Permanent.to_string(),
+                message.clone(),
+            )
             .await;
-        self.emit_status(CalcStatus::Running, CalcStatus::Failed).await;
-        let _ = self.run_tx.send(RunNotification::CalcFinished(self.id.clone())).await;
+        self.emit_status(CalcStatus::Running, CalcStatus::Failed)
+            .await;
+        let _ = self
+            .run_tx
+            .send(RunNotification::CalcFinished(self.id.clone()))
+            .await;
         warn!(calc_id = %self.id, error = %message, "calculation permanently failed");
     }
 
@@ -270,8 +287,12 @@ impl CalcActor {
                     message,
                 )
                 .await;
-            self.emit_status(CalcStatus::Running, CalcStatus::Failed).await;
-            let _ = self.run_tx.send(RunNotification::CalcFinished(self.id.clone())).await;
+            self.emit_status(CalcStatus::Running, CalcStatus::Failed)
+                .await;
+            let _ = self
+                .run_tx
+                .send(RunNotification::CalcFinished(self.id.clone()))
+                .await;
             return true;
         }
 
@@ -281,8 +302,12 @@ impl CalcActor {
             self.retry_cfg.max_delay_ms,
         );
         let next_at = Utc::now().timestamp_millis() + delay as i64;
-        let _ = self.db.calc_retrying(self.id.clone(), self.attempt, next_at).await;
-        self.emit_status(CalcStatus::Running, CalcStatus::Retrying).await;
+        let _ = self
+            .db
+            .calc_retrying(self.id.clone(), self.attempt, next_at)
+            .await;
+        self.emit_status(CalcStatus::Running, CalcStatus::Retrying)
+            .await;
 
         tokio::select! {
             _ = time::sleep(Duration::from_millis(delay)) => {}
@@ -301,8 +326,12 @@ impl CalcActor {
 
     async fn handle_cancel(&self) {
         let _ = self.db.calc_cancelled(self.id.clone()).await;
-        self.emit_status(CalcStatus::Running, CalcStatus::Cancelled).await;
-        let _ = self.run_tx.send(RunNotification::CalcFinished(self.id.clone())).await;
+        self.emit_status(CalcStatus::Running, CalcStatus::Cancelled)
+            .await;
+        let _ = self
+            .run_tx
+            .send(RunNotification::CalcFinished(self.id.clone()))
+            .await;
         info!(calc_id = %self.id, "calculation cancelled");
     }
 

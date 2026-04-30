@@ -30,7 +30,6 @@ fn canonical_json(v: &serde_json::Value) -> String {
             let entries: Vec<String> = arr.iter().map(canonical_json).collect();
             format!("[{}]", entries.join(","))
         }
-        other => serde_json::to_string(other)
-            .expect("serializing a JSON Value is infallible"),
+        other => serde_json::to_string(other).expect("serializing a JSON Value is infallible"),
     }
 }

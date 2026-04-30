@@ -19,7 +19,10 @@ pub struct SseStream {
 
 impl SseStream {
     pub fn new(body: Incoming) -> Self {
-        Self { body, buf: BytesMut::new() }
+        Self {
+            body,
+            buf: BytesMut::new(),
+        }
     }
 
     /// Returns the next complete SSE event, or `None` when the stream ends.

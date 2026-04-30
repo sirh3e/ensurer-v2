@@ -139,20 +139,30 @@ impl DbHandle {
         submitted_by: String,
     ) -> Result<(), AppError> {
         let (reply, rx) = oneshot::channel();
-        self.send(DbCmd::InsertRun { id, jira_issue_id, submitted_by, reply }).await;
-        rx.await.unwrap_or(Err(AppError::Internal("db actor gone".into())))
+        self.send(DbCmd::InsertRun {
+            id,
+            jira_issue_id,
+            submitted_by,
+            reply,
+        })
+        .await;
+        rx.await
+            .unwrap_or(Err(AppError::Internal("db actor gone".into())))
     }
 
     pub async fn update_run_status(&self, id: RunId, status: RunStatus) -> Result<(), AppError> {
         let (reply, rx) = oneshot::channel();
-        self.send(DbCmd::UpdateRunStatus { id, status, reply }).await;
-        rx.await.unwrap_or(Err(AppError::Internal("db actor gone".into())))
+        self.send(DbCmd::UpdateRunStatus { id, status, reply })
+            .await;
+        rx.await
+            .unwrap_or(Err(AppError::Internal("db actor gone".into())))
     }
 
     pub async fn get_run(&self, id: RunId) -> Result<Option<Run>, AppError> {
         let (reply, rx) = oneshot::channel();
         self.send(DbCmd::GetRun { id, reply }).await;
-        rx.await.unwrap_or(Err(AppError::Internal("db actor gone".into())))
+        rx.await
+            .unwrap_or(Err(AppError::Internal("db actor gone".into())))
     }
 
     pub async fn list_runs(
@@ -163,21 +173,30 @@ impl DbHandle {
         cursor_id: Option<String>,
     ) -> Result<Vec<Run>, AppError> {
         let (reply, rx) = oneshot::channel();
-        self.send(DbCmd::ListRuns { status_filter, limit, cursor_created_at, cursor_id, reply })
-            .await;
-        rx.await.unwrap_or(Err(AppError::Internal("db actor gone".into())))
+        self.send(DbCmd::ListRuns {
+            status_filter,
+            limit,
+            cursor_created_at,
+            cursor_id,
+            reply,
+        })
+        .await;
+        rx.await
+            .unwrap_or(Err(AppError::Internal("db actor gone".into())))
     }
 
     pub async fn insert_calculation(&self, calc: Calculation) -> Result<(), AppError> {
         let (reply, rx) = oneshot::channel();
         self.send(DbCmd::InsertCalculation { calc, reply }).await;
-        rx.await.unwrap_or(Err(AppError::Internal("db actor gone".into())))
+        rx.await
+            .unwrap_or(Err(AppError::Internal("db actor gone".into())))
     }
 
     pub async fn get_calculation(&self, id: CalcId) -> Result<Option<Calculation>, AppError> {
         let (reply, rx) = oneshot::channel();
         self.send(DbCmd::GetCalculation { id, reply }).await;
-        rx.await.unwrap_or(Err(AppError::Internal("db actor gone".into())))
+        rx.await
+            .unwrap_or(Err(AppError::Internal("db actor gone".into())))
     }
 
     pub async fn list_calculations_for_run(
@@ -185,8 +204,10 @@ impl DbHandle {
         run_id: RunId,
     ) -> Result<Vec<Calculation>, AppError> {
         let (reply, rx) = oneshot::channel();
-        self.send(DbCmd::ListCalculationsForRun { run_id, reply }).await;
-        rx.await.unwrap_or(Err(AppError::Internal("db actor gone".into())))
+        self.send(DbCmd::ListCalculationsForRun { run_id, reply })
+            .await;
+        rx.await
+            .unwrap_or(Err(AppError::Internal("db actor gone".into())))
     }
 
     pub async fn calc_started(
@@ -196,20 +217,39 @@ impl DbHandle {
         lease_expires_at: i64,
     ) -> Result<(), AppError> {
         let (reply, rx) = oneshot::channel();
-        self.send(DbCmd::CalcStarted { id, lease_owner, lease_expires_at, reply }).await;
-        rx.await.unwrap_or(Err(AppError::Internal("db actor gone".into())))
+        self.send(DbCmd::CalcStarted {
+            id,
+            lease_owner,
+            lease_expires_at,
+            reply,
+        })
+        .await;
+        rx.await
+            .unwrap_or(Err(AppError::Internal("db actor gone".into())))
     }
 
     pub async fn calc_heartbeat(&self, id: CalcId, lease_expires_at: i64) -> Result<(), AppError> {
         let (reply, rx) = oneshot::channel();
-        self.send(DbCmd::CalcHeartbeat { id, lease_expires_at, reply }).await;
-        rx.await.unwrap_or(Err(AppError::Internal("db actor gone".into())))
+        self.send(DbCmd::CalcHeartbeat {
+            id,
+            lease_expires_at,
+            reply,
+        })
+        .await;
+        rx.await
+            .unwrap_or(Err(AppError::Internal("db actor gone".into())))
     }
 
     pub async fn calc_succeeded(&self, id: CalcId, result_path: String) -> Result<(), AppError> {
         let (reply, rx) = oneshot::channel();
-        self.send(DbCmd::CalcSucceeded { id, result_path, reply }).await;
-        rx.await.unwrap_or(Err(AppError::Internal("db actor gone".into())))
+        self.send(DbCmd::CalcSucceeded {
+            id,
+            result_path,
+            reply,
+        })
+        .await;
+        rx.await
+            .unwrap_or(Err(AppError::Internal("db actor gone".into())))
     }
 
     pub async fn calc_failed(
@@ -219,8 +259,15 @@ impl DbHandle {
         error_message: String,
     ) -> Result<(), AppError> {
         let (reply, rx) = oneshot::channel();
-        self.send(DbCmd::CalcFailed { id, error_kind, error_message, reply }).await;
-        rx.await.unwrap_or(Err(AppError::Internal("db actor gone".into())))
+        self.send(DbCmd::CalcFailed {
+            id,
+            error_kind,
+            error_message,
+            reply,
+        })
+        .await;
+        rx.await
+            .unwrap_or(Err(AppError::Internal("db actor gone".into())))
     }
 
     pub async fn calc_retrying(
@@ -230,20 +277,29 @@ impl DbHandle {
         next_attempt_at: i64,
     ) -> Result<(), AppError> {
         let (reply, rx) = oneshot::channel();
-        self.send(DbCmd::CalcRetrying { id, attempt, next_attempt_at, reply }).await;
-        rx.await.unwrap_or(Err(AppError::Internal("db actor gone".into())))
+        self.send(DbCmd::CalcRetrying {
+            id,
+            attempt,
+            next_attempt_at,
+            reply,
+        })
+        .await;
+        rx.await
+            .unwrap_or(Err(AppError::Internal("db actor gone".into())))
     }
 
     pub async fn calc_cancelled(&self, id: CalcId) -> Result<(), AppError> {
         let (reply, rx) = oneshot::channel();
         self.send(DbCmd::CalcCancelled { id, reply }).await;
-        rx.await.unwrap_or(Err(AppError::Internal("db actor gone".into())))
+        rx.await
+            .unwrap_or(Err(AppError::Internal("db actor gone".into())))
     }
 
     pub async fn calc_reset_pending(&self, id: CalcId) -> Result<(), AppError> {
         let (reply, rx) = oneshot::channel();
         self.send(DbCmd::CalcResetPending { id, reply }).await;
-        rx.await.unwrap_or(Err(AppError::Internal("db actor gone".into())))
+        rx.await
+            .unwrap_or(Err(AppError::Internal("db actor gone".into())))
     }
 
     pub async fn insert_event(
@@ -254,26 +310,37 @@ impl DbHandle {
         payload_json: String,
     ) -> Result<i64, AppError> {
         let (reply, rx) = oneshot::channel();
-        self.send(DbCmd::InsertEvent { run_id, calculation_id, kind, payload_json, reply }).await;
-        rx.await.unwrap_or(Err(AppError::Internal("db actor gone".into())))
+        self.send(DbCmd::InsertEvent {
+            run_id,
+            calculation_id,
+            kind,
+            payload_json,
+            reply,
+        })
+        .await;
+        rx.await
+            .unwrap_or(Err(AppError::Internal("db actor gone".into())))
     }
 
     pub async fn list_expired_leases(&self, now: i64) -> Result<Vec<Calculation>, AppError> {
         let (reply, rx) = oneshot::channel();
         self.send(DbCmd::ListExpiredLeases { now, reply }).await;
-        rx.await.unwrap_or(Err(AppError::Internal("db actor gone".into())))
+        rx.await
+            .unwrap_or(Err(AppError::Internal("db actor gone".into())))
     }
 
     pub async fn list_ready_retries(&self, now: i64) -> Result<Vec<Calculation>, AppError> {
         let (reply, rx) = oneshot::channel();
         self.send(DbCmd::ListReadyRetries { now, reply }).await;
-        rx.await.unwrap_or(Err(AppError::Internal("db actor gone".into())))
+        rx.await
+            .unwrap_or(Err(AppError::Internal("db actor gone".into())))
     }
 
     pub async fn list_active_run_ids(&self) -> Result<Vec<RunId>, AppError> {
         let (reply, rx) = oneshot::channel();
         self.send(DbCmd::ListActiveRunIds { reply }).await;
-        rx.await.unwrap_or(Err(AppError::Internal("db actor gone".into())))
+        rx.await
+            .unwrap_or(Err(AppError::Internal("db actor gone".into())))
     }
 
     pub async fn get_calc_statuses_for_run(
@@ -281,14 +348,21 @@ impl DbHandle {
         run_id: RunId,
     ) -> Result<Vec<CalcStatus>, AppError> {
         let (reply, rx) = oneshot::channel();
-        self.send(DbCmd::GetCalcStatusesForRun { run_id, reply }).await;
-        rx.await.unwrap_or(Err(AppError::Internal("db actor gone".into())))
+        self.send(DbCmd::GetCalcStatusesForRun { run_id, reply })
+            .await;
+        rx.await
+            .unwrap_or(Err(AppError::Internal("db actor gone".into())))
     }
 
     pub async fn prune_events(&self, older_than_ms: i64) -> Result<u64, AppError> {
         let (reply, rx) = oneshot::channel();
-        self.send(DbCmd::PruneEvents { older_than_ms, reply }).await;
-        rx.await.unwrap_or(Err(AppError::Internal("db actor gone".into())))
+        self.send(DbCmd::PruneEvents {
+            older_than_ms,
+            reply,
+        })
+        .await;
+        rx.await
+            .unwrap_or(Err(AppError::Internal("db actor gone".into())))
     }
 }
 
@@ -308,7 +382,12 @@ pub fn spawn(write_pool: Db) -> DbHandle {
 
 async fn process(db: &Db, cmd: DbCmd) {
     match cmd {
-        DbCmd::InsertRun { id, jira_issue_id, submitted_by, reply } => {
+        DbCmd::InsertRun {
+            id,
+            jira_issue_id,
+            submitted_by,
+            reply,
+        } => {
             let _ = reply.send(queries::insert_run(db, &id, &jira_issue_id, &submitted_by).await);
         }
         DbCmd::UpdateRunStatus { id, status, reply } => {
@@ -317,7 +396,13 @@ async fn process(db: &Db, cmd: DbCmd) {
         DbCmd::GetRun { id, reply } => {
             let _ = reply.send(queries::get_run(db, &id).await);
         }
-        DbCmd::ListRuns { status_filter, limit, cursor_created_at, cursor_id, reply } => {
+        DbCmd::ListRuns {
+            status_filter,
+            limit,
+            cursor_created_at,
+            cursor_id,
+            reply,
+        } => {
             let _ = reply.send(
                 queries::list_runs(
                     db,
@@ -338,26 +423,46 @@ async fn process(db: &Db, cmd: DbCmd) {
         DbCmd::ListCalculationsForRun { run_id, reply } => {
             let _ = reply.send(queries::list_calculations_for_run(db, &run_id).await);
         }
-        DbCmd::CalcStarted { id, lease_owner, lease_expires_at, reply } => {
-            let _ = reply.send(
-                queries::update_calc_started(db, &id, &lease_owner, lease_expires_at).await,
-            );
+        DbCmd::CalcStarted {
+            id,
+            lease_owner,
+            lease_expires_at,
+            reply,
+        } => {
+            let _ = reply
+                .send(queries::update_calc_started(db, &id, &lease_owner, lease_expires_at).await);
         }
-        DbCmd::CalcHeartbeat { id, lease_expires_at, reply } => {
+        DbCmd::CalcHeartbeat {
+            id,
+            lease_expires_at,
+            reply,
+        } => {
             let _ = reply.send(queries::update_calc_heartbeat(db, &id, lease_expires_at).await);
         }
-        DbCmd::CalcSucceeded { id, result_path, reply } => {
+        DbCmd::CalcSucceeded {
+            id,
+            result_path,
+            reply,
+        } => {
             let _ = reply.send(queries::update_calc_succeeded(db, &id, &result_path).await);
         }
-        DbCmd::CalcFailed { id, error_kind, error_message, reply } => {
-            let _ = reply.send(
-                queries::update_calc_failed(db, &id, &error_kind, &error_message).await,
-            );
+        DbCmd::CalcFailed {
+            id,
+            error_kind,
+            error_message,
+            reply,
+        } => {
+            let _ =
+                reply.send(queries::update_calc_failed(db, &id, &error_kind, &error_message).await);
         }
-        DbCmd::CalcRetrying { id, attempt, next_attempt_at, reply } => {
-            let _ = reply.send(
-                queries::update_calc_retrying(db, &id, attempt, next_attempt_at).await,
-            );
+        DbCmd::CalcRetrying {
+            id,
+            attempt,
+            next_attempt_at,
+            reply,
+        } => {
+            let _ =
+                reply.send(queries::update_calc_retrying(db, &id, attempt, next_attempt_at).await);
         }
         DbCmd::CalcCancelled { id, reply } => {
             let _ = reply.send(queries::update_calc_cancelled(db, &id).await);
@@ -365,7 +470,13 @@ async fn process(db: &Db, cmd: DbCmd) {
         DbCmd::CalcResetPending { id, reply } => {
             let _ = reply.send(queries::update_calc_pending(db, &id).await);
         }
-        DbCmd::InsertEvent { run_id, calculation_id, kind, payload_json, reply } => {
+        DbCmd::InsertEvent {
+            run_id,
+            calculation_id,
+            kind,
+            payload_json,
+            reply,
+        } => {
             let _ = reply.send(
                 queries::insert_event(
                     db,
@@ -389,7 +500,10 @@ async fn process(db: &Db, cmd: DbCmd) {
         DbCmd::GetCalcStatusesForRun { run_id, reply } => {
             let _ = reply.send(queries::get_calc_statuses_for_run(db, &run_id).await);
         }
-        DbCmd::PruneEvents { older_than_ms, reply } => {
+        DbCmd::PruneEvents {
+            older_than_ms,
+            reply,
+        } => {
             let _ = reply.send(queries::prune_old_events(db, older_than_ms).await);
         }
     }

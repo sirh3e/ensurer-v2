@@ -1,10 +1,9 @@
-use std::time::Duration;
 #[cfg(unix)]
 use std::path::PathBuf;
+use std::time::Duration;
 
 use clap::{CommandFactory, Parser, Subcommand};
 use clap_complete::{Shell, generate};
-use tracing_appender::non_blocking::WorkerGuard;
 use crossterm::{
     event::{Event, EventStream},
     execute,
@@ -13,6 +12,7 @@ use crossterm::{
 use futures_util::StreamExt;
 use ratatui::{Terminal, backend::CrosstermBackend};
 use tokio::sync::mpsc;
+use tracing_appender::non_blocking::WorkerGuard;
 use tracing_subscriber::{EnvFilter, fmt, prelude::*};
 
 use runs::{
@@ -75,7 +75,10 @@ async fn main() -> anyhow::Result<()> {
 
     if cli.init_config {
         let default = RunsConfig::default();
-        print!("{}", toml::to_string_pretty(&default).expect("serialize config"));
+        print!(
+            "{}",
+            toml::to_string_pretty(&default).expect("serialize config")
+        );
         return Ok(());
     }
 
@@ -91,7 +94,8 @@ async fn main() -> anyhow::Result<()> {
     // Spawn network task.
     #[cfg(unix)]
     let net_tx = {
-        let socket = cli.socket
+        let socket = cli
+            .socket
             .or_else(|| cfg.socket_path.clone())
             .unwrap_or_else(|| {
                 std::env::var("XDG_RUNTIME_DIR")
@@ -313,8 +317,17 @@ fn setup_tracing() -> WorkerGuard {
     let file_filter = EnvFilter::new("debug");
 
     tracing_subscriber::registry()
-        .with(fmt::layer().with_writer(std::io::stderr).with_filter(stderr_filter))
-        .with(fmt::layer().json().with_writer(non_blocking).with_filter(file_filter))
+        .with(
+            fmt::layer()
+                .with_writer(std::io::stderr)
+                .with_filter(stderr_filter),
+        )
+        .with(
+            fmt::layer()
+                .json()
+                .with_writer(non_blocking)
+                .with_filter(file_filter),
+        )
         .init();
 
     guard
@@ -326,10 +339,7 @@ fn install_panic_hook() {
     let original = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |info| {
         let _ = crossterm::terminal::disable_raw_mode();
-        let _ = crossterm::execute!(
-            std::io::stdout(),
-            crossterm::terminal::LeaveAlternateScreen,
-        );
+        let _ = crossterm::execute!(std::io::stdout(), crossterm::terminal::LeaveAlternateScreen,);
         original(info);
     }));
 }

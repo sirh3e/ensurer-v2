@@ -9,12 +9,12 @@ use ratatui::{
 use crate::app::keybindings::help_sections;
 
 // LazyVim which-key palette
-const KEY_FG: Color = Color::Rgb(245, 194, 231);   // pink
-const DESC_FG: Color = Color::Rgb(198, 208, 245);  // lavender
+const KEY_FG: Color = Color::Rgb(245, 194, 231); // pink
+const DESC_FG: Color = Color::Rgb(198, 208, 245); // lavender
 const HEADER_FG: Color = Color::Rgb(166, 227, 161); // green
 const BORDER_FG: Color = Color::Rgb(137, 180, 250); // blue
-const DIM_FG: Color = Color::Rgb(88, 91, 112);     // surface2
-const PANEL_BG: Color = Color::Rgb(24, 24, 37);    // base (Catppuccin Mocha)
+const DIM_FG: Color = Color::Rgb(88, 91, 112); // surface2
+const PANEL_BG: Color = Color::Rgb(24, 24, 37); // base (Catppuccin Mocha)
 
 pub fn render(f: &mut Frame, area: Rect) {
     let sections = help_sections();
@@ -39,7 +39,13 @@ pub fn render(f: &mut Frame, area: Rect) {
         .style(Style::default().bg(PANEL_BG))
         .title(Line::from(vec![
             Span::styled(" ", Style::default().bg(PANEL_BG)),
-            Span::styled("which-key", Style::default().fg(BORDER_FG).add_modifier(Modifier::BOLD).bg(PANEL_BG)),
+            Span::styled(
+                "which-key",
+                Style::default()
+                    .fg(BORDER_FG)
+                    .add_modifier(Modifier::BOLD)
+                    .bg(PANEL_BG),
+            ),
             Span::styled(" ", Style::default().bg(PANEL_BG)),
         ]));
 
@@ -59,12 +65,13 @@ pub fn render(f: &mut Frame, area: Rect) {
         let mut lines: Vec<Line> = Vec::new();
 
         // Section header
-        lines.push(Line::from(vec![
-            Span::styled(
-                format!(" {}", section.title),
-                Style::default().fg(HEADER_FG).add_modifier(Modifier::BOLD).bg(PANEL_BG),
-            ),
-        ]));
+        lines.push(Line::from(vec![Span::styled(
+            format!(" {}", section.title),
+            Style::default()
+                .fg(HEADER_FG)
+                .add_modifier(Modifier::BOLD)
+                .bg(PANEL_BG),
+        )]));
 
         // Thin rule under header
         lines.push(Line::from(Span::styled(
@@ -78,12 +85,12 @@ pub fn render(f: &mut Frame, area: Rect) {
                 Span::raw(" "),
                 Span::styled(
                     format!("{:<width$}", key, width = key_width),
-                    Style::default().fg(KEY_FG).add_modifier(Modifier::BOLD).bg(PANEL_BG),
+                    Style::default()
+                        .fg(KEY_FG)
+                        .add_modifier(Modifier::BOLD)
+                        .bg(PANEL_BG),
                 ),
-                Span::styled(
-                    *desc,
-                    Style::default().fg(DESC_FG).bg(PANEL_BG),
-                ),
+                Span::styled(*desc, Style::default().fg(DESC_FG).bg(PANEL_BG)),
             ]));
         }
 
@@ -94,9 +101,21 @@ pub fn render(f: &mut Frame, area: Rect) {
             }
             lines.push(Line::from(vec![
                 Span::styled(" Press ", Style::default().fg(DIM_FG).bg(PANEL_BG)),
-                Span::styled("?", Style::default().fg(KEY_FG).add_modifier(Modifier::BOLD).bg(PANEL_BG)),
+                Span::styled(
+                    "?",
+                    Style::default()
+                        .fg(KEY_FG)
+                        .add_modifier(Modifier::BOLD)
+                        .bg(PANEL_BG),
+                ),
                 Span::styled(" or ", Style::default().fg(DIM_FG).bg(PANEL_BG)),
-                Span::styled("Esc", Style::default().fg(KEY_FG).add_modifier(Modifier::BOLD).bg(PANEL_BG)),
+                Span::styled(
+                    "Esc",
+                    Style::default()
+                        .fg(KEY_FG)
+                        .add_modifier(Modifier::BOLD)
+                        .bg(PANEL_BG),
+                ),
                 Span::styled(" to close", Style::default().fg(DIM_FG).bg(PANEL_BG)),
             ]));
         }

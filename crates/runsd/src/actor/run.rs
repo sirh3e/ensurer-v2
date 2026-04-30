@@ -10,11 +10,11 @@ use common::{
 
 use crate::{
     actor::{
+        calc::ReqwestCalcClient,
         calc::{CalcActor, CalcCmd},
         db::DbHandle,
         event_bus::EventBus,
         worker_pool::WorkerPool,
-        calc::ReqwestCalcClient,
     },
     config::Config,
 };
@@ -126,7 +126,10 @@ impl RunActor {
         match self.db.get_calc_statuses_for_run(self.run_id.clone()).await {
             Ok(statuses) => {
                 let new_status = derive_run_status(&statuses);
-                let _ = self.db.update_run_status(self.run_id.clone(), new_status).await;
+                let _ = self
+                    .db
+                    .update_run_status(self.run_id.clone(), new_status)
+                    .await;
             }
             Err(e) => error!(run_id = %self.run_id, error = %e, "failed to refresh run status"),
         }

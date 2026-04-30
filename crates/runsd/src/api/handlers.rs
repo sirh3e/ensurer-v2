@@ -16,7 +16,10 @@ use crate::{api::state::AppState, error::AppError};
 // ── Healthz ───────────────────────────────────────────────────────────────────
 
 pub async fn healthz(State(state): State<AppState>) -> impl IntoResponse {
-    let db_ok = sqlx::query("SELECT 1").execute(&state.read_pool).await.is_ok();
+    let db_ok = sqlx::query("SELECT 1")
+        .execute(&state.read_pool)
+        .await
+        .is_ok();
     let queue_depth: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM calculations WHERE status IN ('pending','retrying')",
     )
@@ -56,13 +59,17 @@ pub async fn metrics(State(state): State<AppState>) -> impl IntoResponse {
     let mut out = String::new();
     out.push_str("# HELP runsd_runs_total Runs by status\n# TYPE runsd_runs_total gauge\n");
     for (status, count) in &run_counts {
-        out.push_str(&format!("runsd_runs_total{{status=\"{status}\"}} {count}\n"));
+        out.push_str(&format!(
+            "runsd_runs_total{{status=\"{status}\"}} {count}\n"
+        ));
     }
     out.push_str(
         "# HELP runsd_calculations_total Calculations by status\n# TYPE runsd_calculations_total gauge\n",
     );
     for (status, count) in &calc_counts {
-        out.push_str(&format!("runsd_calculations_total{{status=\"{status}\"}} {count}\n"));
+        out.push_str(&format!(
+            "runsd_calculations_total{{status=\"{status}\"}} {count}\n"
+        ));
     }
     out.push_str(
         "# HELP runsd_active_leases Active calculation leases\n# TYPE runsd_active_leases gauge\n",
@@ -71,7 +78,10 @@ pub async fn metrics(State(state): State<AppState>) -> impl IntoResponse {
 
     (
         StatusCode::OK,
-        [(axum::http::header::CONTENT_TYPE, "text/plain; version=0.0.4")],
+        [(
+            axum::http::header::CONTENT_TYPE,
+            "text/plain; version=0.0.4",
+        )],
         out,
     )
 }
@@ -82,7 +92,8 @@ pub async fn submit_run(
     State(state): State<AppState>,
     Json(body): Json<SubmitRunRequest>,
 ) -> Result<impl IntoResponse, AppError> {
-    body.validate().map_err(|e| AppError::BadRequest(e.to_string()))?;
+    body.validate()
+        .map_err(|e| AppError::BadRequest(e.to_string()))?;
     let run_id = state
         .supervisor
         .submit_run(body.jira_issue_id, "anonymous".into(), body.calculations)
@@ -114,12 +125,14 @@ pub async fn list_runs(
         }
     };
 
-    let runs = state.db.list_runs(params.status, limit, cursor_cat, cursor_id).await?;
+    let runs = state
+        .db
+        .list_runs(params.status, limit, cursor_cat, cursor_id)
+        .await?;
 
     let next_cursor = if runs.len() == limit as usize {
-        runs.last().map(|r| {
-            format!("{},{}", r.created_at.timestamp_millis(), r.id)
-        })
+        runs.last()
+            .map(|r| format!("{},{}", r.created_at.timestamp_millis(), r.id))
     } else {
         None
     };
@@ -131,7 +144,10 @@ pub async fn get_run(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<impl IntoResponse, AppError> {
-    let run_id = RunId(id.parse().map_err(|_| AppError::BadRequest("invalid run id".into()))?);
+    let run_id = RunId(
+        id.parse()
+            .map_err(|_| AppError::BadRequest("invalid run id".into()))?,
+    );
     let run = state.db.get_run(run_id).await?.ok_or(AppError::NotFound)?;
     Ok(Json(run))
 }
@@ -140,7 +156,10 @@ pub async fn cancel_run(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<impl IntoResponse, AppError> {
-    let run_id = RunId(id.parse().map_err(|_| AppError::BadRequest("invalid run id".into()))?);
+    let run_id = RunId(
+        id.parse()
+            .map_err(|_| AppError::BadRequest("invalid run id".into()))?,
+    );
     state.supervisor.cancel_run(run_id).await?;
     Ok(StatusCode::NO_CONTENT)
 }
@@ -151,9 +170,15 @@ pub async fn get_calculation(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<impl IntoResponse, AppError> {
-    let calc_id =
-        CalcId(id.parse().map_err(|_| AppError::BadRequest("invalid calc id".into()))?);
-    let calc = state.db.get_calculation(calc_id).await?.ok_or(AppError::NotFound)?;
+    let calc_id = CalcId(
+        id.parse()
+            .map_err(|_| AppError::BadRequest("invalid calc id".into()))?,
+    );
+    let calc = state
+        .db
+        .get_calculation(calc_id)
+        .await?
+        .ok_or(AppError::NotFound)?;
     Ok(Json(calc))
 }
 
@@ -161,8 +186,10 @@ pub async fn retry_calculation(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<impl IntoResponse, AppError> {
-    let calc_id =
-        CalcId(id.parse().map_err(|_| AppError::BadRequest("invalid calc id".into()))?);
+    let calc_id = CalcId(
+        id.parse()
+            .map_err(|_| AppError::BadRequest("invalid calc id".into()))?,
+    );
     let calc = state
         .db
         .get_calculation(calc_id.clone())
@@ -183,8 +210,10 @@ pub async fn cancel_calculation(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<impl IntoResponse, AppError> {
-    let calc_id =
-        CalcId(id.parse().map_err(|_| AppError::BadRequest("invalid calc id".into()))?);
+    let calc_id = CalcId(
+        id.parse()
+            .map_err(|_| AppError::BadRequest("invalid calc id".into()))?,
+    );
     let calc = state
         .db
         .get_calculation(calc_id.clone())
@@ -199,9 +228,15 @@ pub async fn get_result(
     State(state): State<AppState>,
     Path(id): Path<String>,
 ) -> Result<impl IntoResponse, AppError> {
-    let calc_id =
-        CalcId(id.parse().map_err(|_| AppError::BadRequest("invalid calc id".into()))?);
-    let calc = state.db.get_calculation(calc_id).await?.ok_or(AppError::NotFound)?;
+    let calc_id = CalcId(
+        id.parse()
+            .map_err(|_| AppError::BadRequest("invalid calc id".into()))?,
+    );
+    let calc = state
+        .db
+        .get_calculation(calc_id)
+        .await?
+        .ok_or(AppError::NotFound)?;
 
     let path = calc.result_path.ok_or(AppError::NotFound)?;
     let bytes = tokio::fs::read(&path)

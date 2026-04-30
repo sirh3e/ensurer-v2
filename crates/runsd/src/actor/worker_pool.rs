@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use tokio::sync::{Semaphore, OwnedSemaphorePermit};
+use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 
 /// Bounded pool of worker permits. Calculation Actors acquire one permit before
 /// doing heavy work; dropping the permit releases it back to the pool.

@@ -51,15 +51,22 @@ impl RunRow {
         self.id
             .parse()
             .map(RunId)
-            .map_err(|e| RowConversionError::InvalidUuid { column: "runs.id", source: e })
+            .map_err(|e| RowConversionError::InvalidUuid {
+                column: "runs.id",
+                source: e,
+            })
     }
 
     /// Convert into a domain `Run`, supplying pre-fetched calculations.
     pub fn try_into_run(self, calculations: Vec<Calculation>) -> Result<Run, RowConversionError> {
-        let id = self.id.parse().map(RunId).map_err(|e| RowConversionError::InvalidUuid {
-            column: "runs.id",
-            source: e,
-        })?;
+        let id = self
+            .id
+            .parse()
+            .map(RunId)
+            .map_err(|e| RowConversionError::InvalidUuid {
+                column: "runs.id",
+                source: e,
+            })?;
         let status =
             RunStatus::from_str(&self.status).map_err(|_| RowConversionError::UnknownVariant {
                 column: "runs.status",
@@ -104,21 +111,27 @@ pub struct CalcRow {
 impl CalcRow {
     /// Convert into a domain `Calculation`, returning an error on corrupt data.
     pub fn try_into_calc(self) -> Result<Calculation, RowConversionError> {
-        let id = self.id.parse().map(CalcId).map_err(|e| RowConversionError::InvalidUuid {
-            column: "calculations.id",
-            source: e,
-        })?;
-        let run_id =
-            self.run_id.parse().map(RunId).map_err(|e| RowConversionError::InvalidUuid {
-                column: "calculations.run_id",
+        let id = self
+            .id
+            .parse()
+            .map(CalcId)
+            .map_err(|e| RowConversionError::InvalidUuid {
+                column: "calculations.id",
                 source: e,
             })?;
-        let status = CalcStatus::from_str(&self.status).map_err(|_| {
-            RowConversionError::UnknownVariant {
+        let run_id =
+            self.run_id
+                .parse()
+                .map(RunId)
+                .map_err(|e| RowConversionError::InvalidUuid {
+                    column: "calculations.run_id",
+                    source: e,
+                })?;
+        let status =
+            CalcStatus::from_str(&self.status).map_err(|_| RowConversionError::UnknownVariant {
                 column: "calculations.status",
                 value: self.status.clone(),
-            }
-        })?;
+            })?;
         let input_json: serde_json::Value =
             serde_json::from_str(&self.input_json).map_err(|e| {
                 RowConversionError::InvalidJson {

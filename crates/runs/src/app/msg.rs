@@ -25,7 +25,11 @@ pub enum AppMsg {
     /// Terminal was resized.
     Resize(u16, u16),
     /// Progress update from a running directory import.
-    ImportProgress { done: usize, total: usize, errors: usize },
+    ImportProgress {
+        done: usize,
+        total: usize,
+        errors: usize,
+    },
     /// The render loop should quit.
     Quit,
     /// Fired every render frame when no other message is pending; drives the spinner.

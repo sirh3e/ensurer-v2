@@ -14,7 +14,6 @@ use crate::{
 };
 
 pub fn render(f: &mut Frame, area: Rect, app: &App, run_id: &RunId) {
-
     let chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([Constraint::Percentage(50), Constraint::Percentage(50)])
@@ -78,7 +77,10 @@ pub fn render(f: &mut Frame, area: Rect, app: &App, run_id: &RunId) {
                 .title(Span::styled(title, Style::default().fg(palette::LAVENDER))),
         )
         .highlight_style(
-            Style::default().bg(palette::SURFACE0).fg(palette::TEXT).add_modifier(Modifier::BOLD),
+            Style::default()
+                .bg(palette::SURFACE0)
+                .fg(palette::TEXT)
+                .add_modifier(Modifier::BOLD),
         )
         .style(Style::default().bg(palette::BASE));
     f.render_stateful_widget(list, chunks[0], &mut list_state);
@@ -123,7 +125,10 @@ pub fn render(f: &mut Frame, area: Rect, app: &App, run_id: &RunId) {
                 .border_type(BorderType::Rounded)
                 .border_style(Style::default().fg(border_color(focused_right)))
                 .style(Style::default().bg(palette::BASE))
-                .title(Span::styled(" Detail ", Style::default().fg(palette::LAVENDER))),
+                .title(Span::styled(
+                    " Detail ",
+                    Style::default().fg(palette::LAVENDER),
+                )),
         );
     f.render_widget(detail, chunks[1]);
 }

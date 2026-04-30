@@ -96,15 +96,27 @@ pub fn derive_run_status(calc_statuses: &[CalcStatus]) -> RunStatus {
     if calc_statuses.is_empty() {
         return RunStatus::Pending;
     }
-    let any_active = calc_statuses
-        .iter()
-        .any(|s| matches!(s, CalcStatus::Running | CalcStatus::Retrying | CalcStatus::Pending));
+    let any_active = calc_statuses.iter().any(|s| {
+        matches!(
+            s,
+            CalcStatus::Running | CalcStatus::Retrying | CalcStatus::Pending
+        )
+    });
     if any_active {
         return RunStatus::Running;
     }
-    let succeeded = calc_statuses.iter().filter(|s| **s == CalcStatus::Succeeded).count();
-    let failed = calc_statuses.iter().filter(|s| **s == CalcStatus::Failed).count();
-    let cancelled = calc_statuses.iter().filter(|s| **s == CalcStatus::Cancelled).count();
+    let succeeded = calc_statuses
+        .iter()
+        .filter(|s| **s == CalcStatus::Succeeded)
+        .count();
+    let failed = calc_statuses
+        .iter()
+        .filter(|s| **s == CalcStatus::Failed)
+        .count();
+    let cancelled = calc_statuses
+        .iter()
+        .filter(|s| **s == CalcStatus::Cancelled)
+        .count();
     let total = calc_statuses.len();
 
     if succeeded == total {
@@ -212,7 +224,9 @@ pub struct SubmitRunRequest {
 impl SubmitRunRequest {
     pub fn validate(&self) -> Result<(), ValidationError> {
         if self.jira_issue_id.trim().is_empty() {
-            return Err(ValidationError::Field("jira_issue_id must not be empty".into()));
+            return Err(ValidationError::Field(
+                "jira_issue_id must not be empty".into(),
+            ));
         }
         if self.calculations.is_empty() {
             return Err(ValidationError::Field(

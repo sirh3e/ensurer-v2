@@ -1,6 +1,6 @@
 use async_graphql::{
-    Context, EmptySubscription, Enum, InputObject, Object, Schema, SimpleObject,
-    Result as GqlResult,
+    Context, EmptySubscription, Enum, InputObject, Object, Result as GqlResult, Schema,
+    SimpleObject,
 };
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use axum::{Extension, response::IntoResponse};
@@ -210,7 +210,9 @@ impl MutationRoot {
             return Err(async_graphql::Error::new("jiraIssueId must not be empty"));
         }
         if calculations.is_empty() {
-            return Err(async_graphql::Error::new("at least one calculation is required"));
+            return Err(async_graphql::Error::new(
+                "at least one calculation is required",
+            ));
         }
 
         let calcs = calculations
@@ -231,7 +233,10 @@ impl MutationRoot {
                     })
                     .transpose()?
                     .unwrap_or(serde_json::Value::Object(Default::default()));
-                Ok(NewCalc { kind: nc.kind, input })
+                Ok(NewCalc {
+                    kind: nc.kind,
+                    input,
+                })
             })
             .collect::<Result<Vec<_>, async_graphql::Error>>()?;
 

@@ -6,7 +6,7 @@ use tracing::info;
 
 use common::{
     idempotency::compute_idempotency_key,
-    model::{Calculation, CalcStatus, NewCalc},
+    model::{CalcStatus, Calculation, NewCalc},
     types::{CalcId, RunId},
 };
 
@@ -76,37 +76,67 @@ impl SupervisorHandle {
         if self
             .tx
             .send_timeout(
-                SupervisorCmd::SubmitRun { jira_issue_id, submitted_by, calcs, reply },
+                SupervisorCmd::SubmitRun {
+                    jira_issue_id,
+                    submitted_by,
+                    calcs,
+                    reply,
+                },
                 std::time::Duration::from_millis(100),
             )
             .await
             .is_err()
         {
-            return Err(AppError::ServiceUnavailable("supervisor mailbox full".into()));
+            return Err(AppError::ServiceUnavailable(
+                "supervisor mailbox full".into(),
+            ));
         }
-        rx.await.unwrap_or(Err(AppError::Internal("supervisor gone".into())))
+        rx.await
+            .unwrap_or(Err(AppError::Internal("supervisor gone".into())))
     }
 
     pub async fn cancel_run(&self, run_id: RunId) -> Result<(), AppError> {
         let (reply, rx) = oneshot::channel();
-        let _ = self.tx.send(SupervisorCmd::CancelRun { run_id, reply }).await;
-        rx.await.unwrap_or(Err(AppError::Internal("supervisor gone".into())))
+        let _ = self
+            .tx
+            .send(SupervisorCmd::CancelRun { run_id, reply })
+            .await;
+        rx.await
+            .unwrap_or(Err(AppError::Internal("supervisor gone".into())))
     }
 
     pub async fn cancel_calc(&self, run_id: RunId, calc_id: CalcId) -> Result<(), AppError> {
         let (reply, rx) = oneshot::channel();
-        let _ = self.tx.send(SupervisorCmd::CancelCalc { run_id, calc_id, reply }).await;
-        rx.await.unwrap_or(Err(AppError::Internal("supervisor gone".into())))
+        let _ = self
+            .tx
+            .send(SupervisorCmd::CancelCalc {
+                run_id,
+                calc_id,
+                reply,
+            })
+            .await;
+        rx.await
+            .unwrap_or(Err(AppError::Internal("supervisor gone".into())))
     }
 
     pub fn reschedule_calc(&self, run_id: RunId, calc_id: CalcId) {
-        let _ = self.tx.try_send(SupervisorCmd::RescheduleCalc { run_id, calc_id });
+        let _ = self
+            .tx
+            .try_send(SupervisorCmd::RescheduleCalc { run_id, calc_id });
     }
 
     pub async fn retry_calc(&self, run_id: RunId, calc_id: CalcId) -> Result<(), AppError> {
         let (reply, rx) = oneshot::channel();
-        let _ = self.tx.send(SupervisorCmd::RetryCalc { run_id, calc_id, reply }).await;
-        rx.await.unwrap_or(Err(AppError::Internal("supervisor gone".into())))
+        let _ = self
+            .tx
+            .send(SupervisorCmd::RetryCalc {
+                run_id,
+                calc_id,
+                reply,
+            })
+            .await;
+        rx.await
+            .unwrap_or(Err(AppError::Internal("supervisor gone".into())))
     }
 
     pub async fn shutdown(&self) {
@@ -156,7 +186,12 @@ impl Supervisor {
     async fn run(mut self, mut rx: mpsc::Receiver<SupervisorCmd>) {
         while let Some(cmd) = rx.recv().await {
             match cmd {
-                SupervisorCmd::SubmitRun { jira_issue_id, submitted_by, calcs, reply } => {
+                SupervisorCmd::SubmitRun {
+                    jira_issue_id,
+                    submitted_by,
+                    calcs,
+                    reply,
+                } => {
                     let result = self.submit_run(jira_issue_id, submitted_by, calcs).await;
                     let _ = reply.send(result);
                 }
@@ -164,14 +199,22 @@ impl Supervisor {
                     let result = self.cancel_run(&run_id).await;
                     let _ = reply.send(result);
                 }
-                SupervisorCmd::CancelCalc { run_id, calc_id, reply } => {
+                SupervisorCmd::CancelCalc {
+                    run_id,
+                    calc_id,
+                    reply,
+                } => {
                     let result = self.cancel_calc(&run_id, &calc_id).await;
                     let _ = reply.send(result);
                 }
                 SupervisorCmd::RescheduleCalc { run_id, calc_id } => {
                     self.reschedule_calc(run_id, calc_id).await;
                 }
-                SupervisorCmd::RetryCalc { run_id, calc_id, reply } => {
+                SupervisorCmd::RetryCalc {
+                    run_id,
+                    calc_id,
+                    reply,
+                } => {
                     let result = self.retry_calc(run_id, calc_id).await;
                     let _ = reply.send(result);
                 }
@@ -218,7 +261,14 @@ impl Supervisor {
                 updated_at: now,
             };
             self.db.insert_calculation(calc).await?;
-            calc_specs.push((calc_id, nc.kind, nc.input, idem_key, 0u32, self.config.retry.max_attempts));
+            calc_specs.push((
+                calc_id,
+                nc.kind,
+                nc.input,
+                idem_key,
+                0u32,
+                self.config.retry.max_attempts,
+            ));
         }
 
         self.spawn_run_actor(run_id.clone(), calc_specs);
@@ -305,7 +355,14 @@ impl Supervisor {
                     .into_iter()
                     .filter(|c| !c.status.is_terminal())
                     .map(|c| {
-                        (c.id, c.kind, c.input_json, c.idempotency_key, c.attempt, c.max_attempts)
+                        (
+                            c.id,
+                            c.kind,
+                            c.input_json,
+                            c.idempotency_key,
+                            c.attempt,
+                            c.max_attempts,
+                        )
                     })
                     .collect();
                 if !specs.is_empty() {

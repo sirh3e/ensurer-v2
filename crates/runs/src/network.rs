@@ -65,11 +65,7 @@ pub fn spawn(
 }
 
 #[cfg(windows)]
-pub fn spawn(
-    port: u16,
-    app_tx: mpsc::Sender<AppMsg>,
-    page_size: u32,
-) -> mpsc::Sender<NetworkCmd> {
+pub fn spawn(port: u16, app_tx: mpsc::Sender<AppMsg>, page_size: u32) -> mpsc::Sender<NetworkCmd> {
     let (cmd_tx, cmd_rx) = mpsc::channel::<NetworkCmd>(32);
     tokio::spawn(async move {
         run_network(Client::new(port), app_tx, cmd_rx, page_size).await;
@@ -89,10 +85,14 @@ async fn run_network(
         .await
     {
         Ok(body) => {
-            let _ = app_tx.send(AppMsg::RunsLoaded(body.runs, body.next_cursor)).await;
+            let _ = app_tx
+                .send(AppMsg::RunsLoaded(body.runs, body.next_cursor))
+                .await;
         }
         Err(e) => {
-            let _ = app_tx.send(AppMsg::CmdErr(format!("initial fetch failed: {e}"))).await;
+            let _ = app_tx
+                .send(AppMsg::CmdErr(format!("initial fetch failed: {e}")))
+                .await;
         }
     }
 
@@ -106,7 +106,10 @@ async fn run_network(
 
         loop {
             let _ = sse_app_tx.send(AppMsg::SseDisconnected).await;
-            match sse_client.sse_connect(&format!("/events?since={last_seq}")).await {
+            match sse_client
+                .sse_connect(&format!("/events?since={last_seq}"))
+                .await
+            {
                 Ok(body) => {
                     let _ = sse_app_tx.send(AppMsg::SseReconnected).await;
                     backoff_ms = 500; // reset on successful connect
@@ -118,7 +121,9 @@ async fn run_network(
                                     match serde_json::from_str::<SequencedEvent>(&data) {
                                         Ok(seq_event) => {
                                             last_seq = seq_event.seq;
-                                            let _ = sse_app_tx.send(AppMsg::ServerEvent(seq_event)).await;
+                                            let _ = sse_app_tx
+                                                .send(AppMsg::ServerEvent(seq_event))
+                                                .await;
                                         }
                                         Err(e) => {
                                             warn!(error = %e, data = %data, "SSE JSON parse error");
@@ -146,43 +151,56 @@ async fn run_network(
     while let Some(cmd) = cmd_rx.recv().await {
         match cmd {
             NetworkCmd::LoadMoreRuns { cursor } => {
-            let url = format!("/runs?limit=100&cursor={cursor}");
-            match client.get_json::<common::model::ListRunsResponse>(&url).await {
-                Ok(body) => {
-                    let _ = app_tx.send(AppMsg::MoreRunsLoaded(body.runs, body.next_cursor)).await;
-                }
-                Err(e) => {
-                    let _ = app_tx.send(AppMsg::CmdErr(format!("load more failed: {e}"))).await;
-                }
-            }
-        }
-        NetworkCmd::RefreshRuns => {
-            match client
-                .get_json::<common::model::ListRunsResponse>(&format!("/runs?limit={page_size}"))
-                .await
-            {
-                Ok(body) => {
-                    let _ = app_tx.send(AppMsg::RunsLoaded(body.runs, body.next_cursor)).await;
-                }
-                Err(e) => {
-                    let _ = app_tx.send(AppMsg::CmdErr(format!("refresh failed: {e}"))).await;
+                let url = format!("/runs?limit=100&cursor={cursor}");
+                match client
+                    .get_json::<common::model::ListRunsResponse>(&url)
+                    .await
+                {
+                    Ok(body) => {
+                        let _ = app_tx
+                            .send(AppMsg::MoreRunsLoaded(body.runs, body.next_cursor))
+                            .await;
+                    }
+                    Err(e) => {
+                        let _ = app_tx
+                            .send(AppMsg::CmdErr(format!("load more failed: {e}")))
+                            .await;
+                    }
                 }
             }
-        }
-        NetworkCmd::FetchRun { run_id } => {
-            match client
-                .get_json::<common::model::Run>(&format!("/runs/{run_id}"))
-                .await
-            {
-                Ok(run) => {
-                    let _ = app_tx.send(AppMsg::RunFetched(run)).await;
-                }
-                Err(e) => {
-                    warn!(run_id = %run_id, error = %e, "failed to fetch run after RunSubmitted");
+            NetworkCmd::RefreshRuns => {
+                match client
+                    .get_json::<common::model::ListRunsResponse>(&format!(
+                        "/runs?limit={page_size}"
+                    ))
+                    .await
+                {
+                    Ok(body) => {
+                        let _ = app_tx
+                            .send(AppMsg::RunsLoaded(body.runs, body.next_cursor))
+                            .await;
+                    }
+                    Err(e) => {
+                        let _ = app_tx
+                            .send(AppMsg::CmdErr(format!("refresh failed: {e}")))
+                            .await;
+                    }
                 }
             }
-        }
-        NetworkCmd::ImportDirectory { path } => {
+            NetworkCmd::FetchRun { run_id } => {
+                match client
+                    .get_json::<common::model::Run>(&format!("/runs/{run_id}"))
+                    .await
+                {
+                    Ok(run) => {
+                        let _ = app_tx.send(AppMsg::RunFetched(run)).await;
+                    }
+                    Err(e) => {
+                        warn!(run_id = %run_id, error = %e, "failed to fetch run after RunSubmitted");
+                    }
+                }
+            }
+            NetworkCmd::ImportDirectory { path } => {
                 // Run import in background so other commands aren't blocked.
                 let imp_client = client.clone();
                 let imp_tx = app_tx.clone();
@@ -193,8 +211,12 @@ async fn run_network(
             other => {
                 let result = handle_cmd(&client, other).await;
                 match result {
-                    Ok(msg) => { let _ = app_tx.send(AppMsg::CmdOk(msg)).await; }
-                    Err(e)  => { let _ = app_tx.send(AppMsg::CmdErr(e)).await; }
+                    Ok(msg) => {
+                        let _ = app_tx.send(AppMsg::CmdOk(msg)).await;
+                    }
+                    Err(e) => {
+                        let _ = app_tx.send(AppMsg::CmdErr(e)).await;
+                    }
                 }
             }
         }
@@ -203,9 +225,18 @@ async fn run_network(
 
 async fn handle_cmd(client: &Client, cmd: NetworkCmd) -> Result<String, String> {
     match cmd {
-        NetworkCmd::SubmitRun { jira_issue_id, calcs } => {
-            let body = SubmitRunRequest { jira_issue_id, calculations: calcs };
-            let status = client.post_json("/runs", &body).await.map_err(|e| e.to_string())?;
+        NetworkCmd::SubmitRun {
+            jira_issue_id,
+            calcs,
+        } => {
+            let body = SubmitRunRequest {
+                jira_issue_id,
+                calculations: calcs,
+            };
+            let status = client
+                .post_json("/runs", &body)
+                .await
+                .map_err(|e| e.to_string())?;
             if status.is_success() {
                 Ok("Run submitted".into())
             } else {
@@ -213,15 +244,24 @@ async fn handle_cmd(client: &Client, cmd: NetworkCmd) -> Result<String, String> 
             }
         }
         NetworkCmd::CancelRun { run_id } => {
-            client.post_empty(&format!("/runs/{run_id}/cancel")).await.map_err(|e| e.to_string())?;
+            client
+                .post_empty(&format!("/runs/{run_id}/cancel"))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok("Run cancelled".into())
         }
         NetworkCmd::CancelCalc { calc_id, .. } => {
-            client.post_empty(&format!("/calculations/{calc_id}/cancel")).await.map_err(|e| e.to_string())?;
+            client
+                .post_empty(&format!("/calculations/{calc_id}/cancel"))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok("Calculation cancelled".into())
         }
         NetworkCmd::RetryCalc { calc_id, .. } => {
-            client.post_empty(&format!("/calculations/{calc_id}/retry")).await.map_err(|e| e.to_string())?;
+            client
+                .post_empty(&format!("/calculations/{calc_id}/retry"))
+                .await
+                .map_err(|e| e.to_string())?;
             Ok("Retry scheduled".into())
         }
         // These are handled in the command loop above, never reach handle_cmd.
@@ -239,11 +279,22 @@ async fn import_directory(client: Client, dir: PathBuf, app_tx: mpsc::Sender<App
     let total = files.len();
 
     if total == 0 {
-        let _ = app_tx.send(AppMsg::CmdErr(format!("no JSON files found in {}", dir.display()))).await;
+        let _ = app_tx
+            .send(AppMsg::CmdErr(format!(
+                "no JSON files found in {}",
+                dir.display()
+            )))
+            .await;
         return;
     }
 
-    let _ = app_tx.send(AppMsg::ImportProgress { done: 0, total, errors: 0 }).await;
+    let _ = app_tx
+        .send(AppMsg::ImportProgress {
+            done: 0,
+            total,
+            errors: 0,
+        })
+        .await;
 
     let mut submitted = 0usize;
     let mut errors = 0usize;
@@ -256,23 +307,36 @@ async fn import_directory(client: Client, dir: PathBuf, app_tx: mpsc::Sender<App
                 warn!(path = %path.display(), error = %e, "import file failed");
             }
         }
-        let _ = app_tx.send(AppMsg::ImportProgress { done: submitted + errors, total, errors }).await;
+        let _ = app_tx
+            .send(AppMsg::ImportProgress {
+                done: submitted + errors,
+                total,
+                errors,
+            })
+            .await;
     }
 
     if errors == 0 {
-        let _ = app_tx.send(AppMsg::CmdOk(format!("Imported {submitted}/{total} runs"))).await;
+        let _ = app_tx
+            .send(AppMsg::CmdOk(format!("Imported {submitted}/{total} runs")))
+            .await;
     } else {
-        let _ = app_tx.send(AppMsg::CmdErr(format!(
-            "Import done: {submitted} ok, {errors} failed (check logs)"
-        ))).await;
+        let _ = app_tx
+            .send(AppMsg::CmdErr(format!(
+                "Import done: {submitted} ok, {errors} failed (check logs)"
+            )))
+            .await;
     }
 }
 
 async fn import_file(client: &Client, path: &Path) -> Result<(), String> {
     let raw = tokio::fs::read(path).await.map_err(|e| e.to_string())?;
-    let req: SubmitRunRequest = serde_json::from_slice(&raw)
-        .map_err(|e| format!("{}: {e}", path.display()))?;
-    let status = client.post_json("/runs", &req).await.map_err(|e| e.to_string())?;
+    let req: SubmitRunRequest =
+        serde_json::from_slice(&raw).map_err(|e| format!("{}: {e}", path.display()))?;
+    let status = client
+        .post_json("/runs", &req)
+        .await
+        .map_err(|e| e.to_string())?;
     if status.is_success() {
         Ok(())
     } else {

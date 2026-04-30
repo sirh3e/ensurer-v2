@@ -48,8 +48,15 @@ pub enum ConfirmAction {
 
 // ── Filter state ──────────────────────────────────────────────────────────────
 
-pub const FILTER_STATUSES: &[&str] =
-    &["all", "pending", "running", "retrying", "succeeded", "failed", "cancelled"];
+pub const FILTER_STATUSES: &[&str] = &[
+    "all",
+    "pending",
+    "running",
+    "retrying",
+    "succeeded",
+    "failed",
+    "cancelled",
+];
 
 #[derive(Debug, Clone, Default)]
 pub struct FilterState {
@@ -129,9 +136,7 @@ impl App {
                     .as_ref()
                     .map(|q| {
                         r.jira_issue_id.contains(q.as_str())
-                            || r.calculations
-                                .iter()
-                                .any(|c| c.kind.contains(q.as_str()))
+                            || r.calculations.iter().any(|c| c.kind.contains(q.as_str()))
                     })
                     .unwrap_or(true);
                 status_ok && search_ok
@@ -160,8 +165,10 @@ impl App {
 
     pub fn update_calc_status(&mut self, run_id: &RunId, calc_id: &CalcId, status: CalcStatus) {
         if let Some(&ri) = self.run_index.get(run_id)
-            && let Some(calc) =
-                self.runs[ri].calculations.iter_mut().find(|c| &c.id == calc_id)
+            && let Some(calc) = self.runs[ri]
+                .calculations
+                .iter_mut()
+                .find(|c| &c.id == calc_id)
         {
             calc.status = status;
         }

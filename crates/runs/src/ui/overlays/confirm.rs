@@ -14,7 +14,7 @@ pub fn render(f: &mut Frame, area: Rect, message: &str) {
         height: h,
     };
     f.render_widget(Clear, popup);
-    let para = Paragraph::new(message)
-        .block(Block::default().borders(Borders::ALL).title(" Confirm "));
+    let para =
+        Paragraph::new(message).block(Block::default().borders(Borders::ALL).title(" Confirm "));
     f.render_widget(para, popup);
 }

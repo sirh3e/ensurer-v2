@@ -7,8 +7,8 @@
 /// a TUI. Long-lived SSE streaming is handled separately via `sse_connect`.
 use bytes::Bytes;
 use http_body_util::{BodyExt, Full};
-use hyper::{Method, Request, StatusCode, body::Incoming};
 use hyper::client::conn::http1;
+use hyper::{Method, Request, StatusCode, body::Incoming};
 use hyper_util::rt::TokioIo;
 
 #[cfg(unix)]
@@ -39,7 +39,9 @@ pub struct Client {
 impl Client {
     #[cfg(unix)]
     pub fn new(socket_path: impl Into<PathBuf>) -> Self {
-        Self { socket_path: socket_path.into() }
+        Self {
+            socket_path: socket_path.into(),
+        }
     }
 
     #[cfg(windows)]
@@ -60,7 +62,9 @@ impl Client {
         };
 
         let (sender, conn) = http1::handshake(io).await?;
-        tokio::spawn(async move { let _ = conn.await; });
+        tokio::spawn(async move {
+            let _ = conn.await;
+        });
         Ok(sender)
     }
 
@@ -80,7 +84,10 @@ impl Client {
     }
 
     /// GET — deserialise body as JSON.
-    pub async fn get_json<T: serde::de::DeserializeOwned>(&self, path: &str) -> Result<T, ClientError> {
+    pub async fn get_json<T: serde::de::DeserializeOwned>(
+        &self,
+        path: &str,
+    ) -> Result<T, ClientError> {
         let (status, body) = self.get(path).await?;
         if !status.is_success() {
             return Err(ClientError::Status(status));
@@ -142,7 +149,9 @@ impl Client {
         };
 
         let (mut sender, conn) = http1::handshake(io).await?;
-        tokio::spawn(async move { let _ = conn.with_upgrades().await; });
+        tokio::spawn(async move {
+            let _ = conn.with_upgrades().await;
+        });
 
         let resp = sender.send_request(req).await?;
         if !resp.status().is_success() {

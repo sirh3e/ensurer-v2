@@ -71,32 +71,52 @@ pub async fn list_runs(
     cursor_id: Option<&str>,
 ) -> Result<Vec<Run>, AppError> {
     let rows: Vec<RunRow> = match (status_filter, cursor_created_at, cursor_id) {
-        (Some(s), Some(cat), Some(cid)) => sqlx::query_as(
-            "SELECT id, jira_issue_id, submitted_by, status, created_at, updated_at
+        (Some(s), Some(cat), Some(cid)) => {
+            sqlx::query_as(
+                "SELECT id, jira_issue_id, submitted_by, status, created_at, updated_at
              FROM runs WHERE status = ? AND (created_at < ? OR (created_at = ? AND id < ?))
              ORDER BY created_at DESC, id DESC LIMIT ?",
-        )
-        .bind(s).bind(cat).bind(cat).bind(cid).bind(limit as i64)
-        .fetch_all(db).await?,
-        (Some(s), None, None) => sqlx::query_as(
-            "SELECT id, jira_issue_id, submitted_by, status, created_at, updated_at
+            )
+            .bind(s)
+            .bind(cat)
+            .bind(cat)
+            .bind(cid)
+            .bind(limit as i64)
+            .fetch_all(db)
+            .await?
+        }
+        (Some(s), None, None) => {
+            sqlx::query_as(
+                "SELECT id, jira_issue_id, submitted_by, status, created_at, updated_at
              FROM runs WHERE status = ? ORDER BY created_at DESC, id DESC LIMIT ?",
-        )
-        .bind(s).bind(limit as i64)
-        .fetch_all(db).await?,
-        (None, Some(cat), Some(cid)) => sqlx::query_as(
-            "SELECT id, jira_issue_id, submitted_by, status, created_at, updated_at
+            )
+            .bind(s)
+            .bind(limit as i64)
+            .fetch_all(db)
+            .await?
+        }
+        (None, Some(cat), Some(cid)) => {
+            sqlx::query_as(
+                "SELECT id, jira_issue_id, submitted_by, status, created_at, updated_at
              FROM runs WHERE (created_at < ? OR (created_at = ? AND id < ?))
              ORDER BY created_at DESC, id DESC LIMIT ?",
-        )
-        .bind(cat).bind(cat).bind(cid).bind(limit as i64)
-        .fetch_all(db).await?,
-        _ => sqlx::query_as(
-            "SELECT id, jira_issue_id, submitted_by, status, created_at, updated_at
+            )
+            .bind(cat)
+            .bind(cat)
+            .bind(cid)
+            .bind(limit as i64)
+            .fetch_all(db)
+            .await?
+        }
+        _ => {
+            sqlx::query_as(
+                "SELECT id, jira_issue_id, submitted_by, status, created_at, updated_at
              FROM runs ORDER BY created_at DESC, id DESC LIMIT ?",
-        )
-        .bind(limit as i64)
-        .fetch_all(db).await?,
+            )
+            .bind(limit as i64)
+            .fetch_all(db)
+            .await?
+        }
     };
 
     let mut runs = Vec::with_capacity(rows.len());
@@ -144,7 +164,9 @@ pub async fn get_calculation(db: &Db, id: &CalcId) -> Result<Option<Calculation>
     .bind(id.0.to_string())
     .fetch_optional(db)
     .await?;
-    row.map(|r| r.try_into_calc()).transpose().map_err(AppError::from)
+    row.map(|r| r.try_into_calc())
+        .transpose()
+        .map_err(AppError::from)
 }
 
 pub async fn list_calculations_for_run(
@@ -179,8 +201,13 @@ pub async fn update_calc_started(
              lease_owner = ?, lease_expires_at = ?, updated_at = ?
          WHERE id = ?",
     )
-    .bind(now).bind(lease_owner).bind(lease_expires_at).bind(now).bind(id.0.to_string())
-    .execute(db).await?;
+    .bind(now)
+    .bind(lease_owner)
+    .bind(lease_expires_at)
+    .bind(now)
+    .bind(id.0.to_string())
+    .execute(db)
+    .await?;
     Ok(())
 }
 
@@ -191,8 +218,11 @@ pub async fn update_calc_heartbeat(
 ) -> Result<(), AppError> {
     let now = now_millis();
     sqlx::query("UPDATE calculations SET lease_expires_at = ?, updated_at = ? WHERE id = ?")
-        .bind(lease_expires_at).bind(now).bind(id.0.to_string())
-        .execute(db).await?;
+        .bind(lease_expires_at)
+        .bind(now)
+        .bind(id.0.to_string())
+        .execute(db)
+        .await?;
     Ok(())
 }
 
@@ -208,8 +238,12 @@ pub async fn update_calc_succeeded(
              lease_owner = NULL, lease_expires_at = NULL, updated_at = ?
          WHERE id = ?",
     )
-    .bind(now).bind(result_path).bind(now).bind(id.0.to_string())
-    .execute(db).await?;
+    .bind(now)
+    .bind(result_path)
+    .bind(now)
+    .bind(id.0.to_string())
+    .execute(db)
+    .await?;
     Ok(())
 }
 
@@ -226,8 +260,13 @@ pub async fn update_calc_failed(
              lease_owner = NULL, lease_expires_at = NULL, updated_at = ?
          WHERE id = ?",
     )
-    .bind(now).bind(error_kind).bind(error_message).bind(now).bind(id.0.to_string())
-    .execute(db).await?;
+    .bind(now)
+    .bind(error_kind)
+    .bind(error_message)
+    .bind(now)
+    .bind(id.0.to_string())
+    .execute(db)
+    .await?;
     Ok(())
 }
 
@@ -244,8 +283,12 @@ pub async fn update_calc_retrying(
              lease_owner = NULL, lease_expires_at = NULL, updated_at = ?
          WHERE id = ?",
     )
-    .bind(attempt as i64).bind(next_attempt_at).bind(now).bind(id.0.to_string())
-    .execute(db).await?;
+    .bind(attempt as i64)
+    .bind(next_attempt_at)
+    .bind(now)
+    .bind(id.0.to_string())
+    .execute(db)
+    .await?;
     Ok(())
 }
 
@@ -257,8 +300,11 @@ pub async fn update_calc_cancelled(db: &Db, id: &CalcId) -> Result<(), AppError>
              lease_owner = NULL, lease_expires_at = NULL, updated_at = ?
          WHERE id = ?",
     )
-    .bind(now).bind(now).bind(id.0.to_string())
-    .execute(db).await?;
+    .bind(now)
+    .bind(now)
+    .bind(id.0.to_string())
+    .execute(db)
+    .await?;
     Ok(())
 }
 
@@ -271,8 +317,10 @@ pub async fn update_calc_pending(db: &Db, id: &CalcId) -> Result<(), AppError> {
              lease_owner = NULL, lease_expires_at = NULL, updated_at = ?
          WHERE id = ?",
     )
-    .bind(now).bind(id.0.to_string())
-    .execute(db).await?;
+    .bind(now)
+    .bind(id.0.to_string())
+    .execute(db)
+    .await?;
     Ok(())
 }
 
@@ -319,12 +367,12 @@ pub async fn list_active_run_ids(db: &Db) -> Result<Vec<RunId>, AppError> {
     .await?;
     rows.into_iter()
         .map(|(id,)| {
-            id.parse()
-                .map(RunId)
-                .map_err(|e| AppError::RowConversion(RowConversionError::InvalidUuid {
+            id.parse().map(RunId).map_err(|e| {
+                AppError::RowConversion(RowConversionError::InvalidUuid {
                     column: "calculations.run_id",
                     source: e,
-                }))
+                })
+            })
         })
         .collect()
 }
@@ -416,8 +464,11 @@ pub async fn crash_recovery_sweep(
                  lease_owner = NULL, lease_expires_at = NULL, completed_at = ?, updated_at = ?
                  WHERE id = ?",
             )
-            .bind(now).bind(now).bind(id_str)
-            .execute(db).await?;
+            .bind(now)
+            .bind(now)
+            .bind(id_str)
+            .execute(db)
+            .await?;
         } else {
             let next_at = now + (next_attempt as i64 * 5_000);
             sqlx::query(
@@ -425,8 +476,12 @@ pub async fn crash_recovery_sweep(
                  next_attempt_at = ?, lease_owner = NULL, lease_expires_at = NULL, updated_at = ?
                  WHERE id = ?",
             )
-            .bind(next_attempt as i64).bind(next_at).bind(now).bind(id_str)
-            .execute(db).await?;
+            .bind(next_attempt as i64)
+            .bind(next_at)
+            .bind(now)
+            .bind(id_str)
+            .execute(db)
+            .await?;
         }
     }
     Ok(())
@@ -444,11 +499,10 @@ pub async fn get_calc_statuses_for_run(
     db: &Db,
     run_id: &RunId,
 ) -> Result<Vec<CalcStatus>, AppError> {
-    let rows: Vec<(String,)> =
-        sqlx::query_as("SELECT status FROM calculations WHERE run_id = ?")
-            .bind(run_id.0.to_string())
-            .fetch_all(db)
-            .await?;
+    let rows: Vec<(String,)> = sqlx::query_as("SELECT status FROM calculations WHERE run_id = ?")
+        .bind(run_id.0.to_string())
+        .fetch_all(db)
+        .await?;
     rows.into_iter()
         .map(|(s,)| {
             s.parse::<CalcStatus>().map_err(|_| {

@@ -1,6 +1,6 @@
 use figment::{
-    providers::{Env, Format, Serialized, Toml},
     Figment,
+    providers::{Env, Format, Serialized, Toml},
 };
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -196,7 +196,7 @@ fn home_dir() -> PathBuf {
             return PathBuf::from(p);
         }
         let drive = std::env::var("HOMEDRIVE").unwrap_or_default();
-        let path  = std::env::var("HOMEPATH").unwrap_or_default();
+        let path = std::env::var("HOMEPATH").unwrap_or_default();
         if !drive.is_empty() || !path.is_empty() {
             return PathBuf::from(format!("{drive}{path}"));
         }

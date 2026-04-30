@@ -34,7 +34,10 @@ fn highlight_match<'a>(text: &'a str, query: &str, base_color: Color) -> Vec<Spa
         }
         spans.push(Span::styled(
             &rest[pos..pos + query.len()],
-            Style::default().fg(palette::BASE).bg(palette::YELLOW).add_modifier(Modifier::BOLD),
+            Style::default()
+                .fg(palette::BASE)
+                .bg(palette::YELLOW)
+                .add_modifier(Modifier::BOLD),
         ));
         rest = &rest[pos + query.len()..];
     }
@@ -55,11 +58,18 @@ fn render_runs_pane(f: &mut Frame, area: Rect, app: &App) {
         .enumerate()
         .map(|(idx, r)| {
             let color = run_status_color(r.status);
-            let in_visual = visual_range.as_ref().is_some_and(|range| range.contains(&idx));
-            let mut spans = vec![
-                Span::styled(format!("{:<14}", r.status.to_string()), Style::default().fg(color)),
-            ];
-            spans.extend(highlight_match(r.jira_issue_id.as_str(), search_query, palette::TEXT));
+            let in_visual = visual_range
+                .as_ref()
+                .is_some_and(|range| range.contains(&idx));
+            let mut spans = vec![Span::styled(
+                format!("{:<14}", r.status.to_string()),
+                Style::default().fg(color),
+            )];
+            spans.extend(highlight_match(
+                r.jira_issue_id.as_str(),
+                search_query,
+                palette::TEXT,
+            ));
             spans.push(Span::raw(" "));
             spans.push(Span::styled(
                 format!("({} calcs)", r.calculations.len()),
@@ -79,7 +89,10 @@ fn render_runs_pane(f: &mut Frame, area: Rect, app: &App) {
         state.select(Some(app.run_cursor));
     }
 
-    let filter_hint = app.filter.status.as_deref()
+    let filter_hint = app
+        .filter
+        .status
+        .as_deref()
         .map(|s| format!(" [filter: {s}]"))
         .unwrap_or_default();
 
@@ -122,7 +135,10 @@ fn render_calcs_preview(f: &mut Frame, area: Rect, app: &App) {
                 .map(|c| {
                     let color = calc_status_color(c.status);
                     ListItem::new(Line::from(vec![
-                        Span::styled(format!("{:<14}", c.status.to_string()), Style::default().fg(color)),
+                        Span::styled(
+                            format!("{:<14}", c.status.to_string()),
+                            Style::default().fg(color),
+                        ),
                         Span::styled(c.kind.as_str(), Style::default().fg(palette::TEXT)),
                         Span::raw(" "),
                         Span::styled(

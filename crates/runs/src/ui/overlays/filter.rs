@@ -52,7 +52,9 @@ pub fn render(f: &mut Frame, area: Rect, app: &App) {
                 .style(Style::default().bg(BG))
                 .title(Span::styled(
                     " Filter ",
-                    Style::default().fg(Color::White).add_modifier(Modifier::BOLD),
+                    Style::default()
+                        .fg(Color::White)
+                        .add_modifier(Modifier::BOLD),
                 )),
         )
         .highlight_style(

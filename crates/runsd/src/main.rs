@@ -5,19 +5,16 @@ use chrono::Utc;
 use clap::{CommandFactory, Parser};
 use clap_complete::{Shell, generate};
 use sqlx::sqlite::SqlitePoolOptions;
-#[cfg(unix)]
-use tokio::net::UnixListener;
 #[cfg(windows)]
 use tokio::net::TcpListener;
+#[cfg(unix)]
+use tokio::net::UnixListener;
 use tracing::info;
-use tracing_subscriber::{fmt, layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+use tracing_subscriber::{EnvFilter, fmt, layer::SubscriberExt, util::SubscriberInitExt};
 
 use runsd::{
     actor::{
-        db as db_actor,
-        event_bus::EventBus,
-        supervisor::Supervisor,
-        watchdog,
+        db as db_actor, event_bus::EventBus, supervisor::Supervisor, watchdog,
         worker_pool::WorkerPool,
     },
     api::{routes, state::AppState},
@@ -51,7 +48,10 @@ async fn main() -> anyhow::Result<()> {
 
     if cli.init_config {
         let default = Config::default();
-        print!("{}", toml::to_string_pretty(&default).expect("serialize config"));
+        print!(
+            "{}",
+            toml::to_string_pretty(&default).expect("serialize config")
+        );
         return Ok(());
     }
 
@@ -62,8 +62,12 @@ async fn main() -> anyhow::Result<()> {
         std::fs::create_dir_all(p)
             .with_context(|| format!("failed to create log dir {}", p.display()))?;
     }
-    std::fs::create_dir_all(&config.server.data_dir)
-        .with_context(|| format!("failed to create data dir {}", config.server.data_dir.display()))?;
+    std::fs::create_dir_all(&config.server.data_dir).with_context(|| {
+        format!(
+            "failed to create data dir {}",
+            config.server.data_dir.display()
+        )
+    })?;
     #[cfg(unix)]
     if let Some(p) = config.server.socket_path.parent() {
         std::fs::create_dir_all(p)
@@ -90,10 +94,18 @@ async fn main() -> anyhow::Result<()> {
         .context("failed to open SQLite (read)")?;
 
     // Apply connection-level PRAGMAs outside any transaction.
-    sqlx::query("PRAGMA journal_mode = WAL").execute(&write_pool).await?;
-    sqlx::query("PRAGMA synchronous = NORMAL").execute(&write_pool).await?;
-    sqlx::query("PRAGMA journal_mode = WAL").execute(&read_pool).await?;
-    sqlx::query("PRAGMA synchronous = NORMAL").execute(&read_pool).await?;
+    sqlx::query("PRAGMA journal_mode = WAL")
+        .execute(&write_pool)
+        .await?;
+    sqlx::query("PRAGMA synchronous = NORMAL")
+        .execute(&write_pool)
+        .await?;
+    sqlx::query("PRAGMA journal_mode = WAL")
+        .execute(&read_pool)
+        .await?;
+    sqlx::query("PRAGMA synchronous = NORMAL")
+        .execute(&read_pool)
+        .await?;
 
     // Run migrations.
     sqlx::migrate!("./migrations")
@@ -115,7 +127,9 @@ async fn main() -> anyhow::Result<()> {
     let bus = EventBus::new();
     let pool = WorkerPool::new(config.server.max_concurrent_calculations);
     let http_client = reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(config.external_api.request_timeout_s))
+        .timeout(std::time::Duration::from_secs(
+            config.external_api.request_timeout_s,
+        ))
         .build()?;
 
     let db_handle = db_actor::spawn(write_pool);
@@ -143,12 +157,11 @@ async fn main() -> anyhow::Result<()> {
         let prune_db = db_handle.clone();
         let retention_days = config.logging.event_retention_days;
         tokio::spawn(async move {
-            let mut interval =
-                tokio::time::interval(std::time::Duration::from_secs(3_600));
+            let mut interval = tokio::time::interval(std::time::Duration::from_secs(3_600));
             loop {
                 interval.tick().await;
-                let cutoff_ms = Utc::now().timestamp_millis()
-                    - (retention_days as i64 * 86_400_000);
+                let cutoff_ms =
+                    Utc::now().timestamp_millis() - (retention_days as i64 * 86_400_000);
                 match prune_db.prune_events(cutoff_ms).await {
                     Ok(n) if n > 0 => tracing::info!(deleted = n, "pruned old events"),
                     Err(e) => tracing::warn!(error = %e, "event pruning failed"),
@@ -234,8 +247,17 @@ fn setup_tracing(config: &Config) -> anyhow::Result<()> {
     use tracing_subscriber::Layer;
     let file_filter = EnvFilter::new(config.logging.file_level.as_str());
     tracing_subscriber::registry()
-        .with(fmt::layer().with_writer(std::io::stderr).with_filter(stderr_filter))
-        .with(fmt::layer().json().with_writer(non_blocking).with_filter(file_filter))
+        .with(
+            fmt::layer()
+                .with_writer(std::io::stderr)
+                .with_filter(stderr_filter),
+        )
+        .with(
+            fmt::layer()
+                .json()
+                .with_writer(non_blocking)
+                .with_filter(file_filter),
+        )
         .init();
 
     Ok(())

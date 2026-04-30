@@ -14,7 +14,11 @@ pub fn render(f: &mut Frame, area: Rect, buf: &str) {
         height,
     };
     f.render_widget(Clear, cmd_area);
-    let prompt = if buf.starts_with('/') { buf.to_string() } else { format!(":{buf}") };
+    let prompt = if buf.starts_with('/') {
+        buf.to_string()
+    } else {
+        format!(":{buf}")
+    };
     let para = Paragraph::new(Line::from(Span::raw(prompt)))
         .block(Block::default().borders(Borders::ALL).title(" Command "));
     f.render_widget(para, cmd_area);

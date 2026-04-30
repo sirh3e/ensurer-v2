@@ -6,9 +6,9 @@ use common::{
 
 use crate::{
     app::{
-        keybindings::{dispatch, Action},
+        keybindings::{Action, dispatch},
         msg::AppMsg,
-        state::{App, ConfirmAction, ConfirmDialog, Overlay, Pane, Screen, FILTER_STATUSES},
+        state::{App, ConfirmAction, ConfirmDialog, FILTER_STATUSES, Overlay, Pane, Screen},
     },
     network::NetworkCmd,
 };
@@ -18,7 +18,9 @@ use crate::{
 pub enum Effect {
     Network(NetworkCmd),
     Quit,
-    SaveResult { calc_id: CalcId },
+    SaveResult {
+        calc_id: CalcId,
+    },
     /// Copy `text` to the system clipboard.
     Yank(String),
 }
@@ -69,7 +71,11 @@ pub fn update(mut app: App, msg: AppMsg) -> (App, Vec<Effect>) {
         AppMsg::CmdErr(msg) => {
             app.status_bar = format!("Error: {msg}");
         }
-        AppMsg::ImportProgress { done, total, errors } => {
+        AppMsg::ImportProgress {
+            done,
+            total,
+            errors,
+        } => {
             app.status_bar = if errors > 0 {
                 format!("Importing… {done}/{total} ({errors} errors)")
             } else {
@@ -102,12 +108,19 @@ pub fn update(mut app: App, msg: AppMsg) -> (App, Vec<Effect>) {
 
 fn apply_server_event(app: &mut App, event: &ServerEvent) -> Vec<Effect> {
     match event {
-        ServerEvent::CalcStatusChanged { run_id, calculation_id, to, .. } => {
+        ServerEvent::CalcStatusChanged {
+            run_id,
+            calculation_id,
+            to,
+            ..
+        } => {
             app.update_calc_status(run_id, calculation_id, *to);
         }
         ServerEvent::RunSubmitted { run_id, .. } => {
             // Fetch the full run so it appears in the list immediately.
-            return vec![Effect::Network(NetworkCmd::FetchRun { run_id: run_id.clone() })];
+            return vec![Effect::Network(NetworkCmd::FetchRun {
+                run_id: run_id.clone(),
+            })];
         }
         _ => {}
     }
@@ -145,8 +158,11 @@ fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> Vec<Effect> {
             }
             crossterm::event::KeyCode::Enter => {
                 let chosen = FILTER_STATUSES[app.filter.filter_cursor];
-                app.filter.status =
-                    if chosen == "all" { None } else { Some(chosen.to_string()) };
+                app.filter.status = if chosen == "all" {
+                    None
+                } else {
+                    Some(chosen.to_string())
+                };
                 app.run_cursor = 0;
                 app.overlay = Overlay::None;
             }
@@ -220,8 +236,10 @@ fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> Vec<Effect> {
         Action::FilterOverlay => {
             // Initialise overlay cursor to the currently active filter.
             let current = app.filter.status.as_deref().unwrap_or("all");
-            app.filter.filter_cursor =
-                FILTER_STATUSES.iter().position(|&s| s == current).unwrap_or(0);
+            app.filter.filter_cursor = FILTER_STATUSES
+                .iter()
+                .position(|&s| s == current)
+                .unwrap_or(0);
             app.overlay = Overlay::Filter;
         }
         Action::CommandMode => {
@@ -311,28 +329,26 @@ fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> Vec<Effect> {
                 app.calc_cursor = app.calc_cursor.saturating_sub(step);
             }
         }
-        Action::Enter => {
-            match app.pane {
-                Pane::RunList => {
-                    if let Some(run) = app.selected_run() {
-                        let rid = run.id.clone();
-                        app.screen = Screen::RunDetail(rid);
-                        app.pane = Pane::CalcList;
-                        app.calc_cursor = 0;
-                        app.detail_scroll = 0;
-                    }
+        Action::Enter => match app.pane {
+            Pane::RunList => {
+                if let Some(run) = app.selected_run() {
+                    let rid = run.id.clone();
+                    app.screen = Screen::RunDetail(rid);
+                    app.pane = Pane::CalcList;
+                    app.calc_cursor = 0;
+                    app.detail_scroll = 0;
                 }
-                Pane::CalcList => {
-                    if let Some(calc) = app.selected_calc() {
-                        let cid = calc.id.clone();
-                        app.screen = Screen::CalcDetail(cid);
-                        app.pane = Pane::Detail;
-                        app.detail_scroll = 0;
-                    }
-                }
-                Pane::Detail => {}
             }
-        }
+            Pane::CalcList => {
+                if let Some(calc) = app.selected_calc() {
+                    let cid = calc.id.clone();
+                    app.screen = Screen::CalcDetail(cid);
+                    app.pane = Pane::Detail;
+                    app.detail_scroll = 0;
+                }
+            }
+            Pane::Detail => {}
+        },
         Action::Save => {
             if let Some(calc) = app.selected_calc() {
                 if calc.result_path.is_some() {
@@ -345,12 +361,8 @@ fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> Vec<Effect> {
         }
         Action::Yank => {
             let text = match app.pane {
-                Pane::CalcList | Pane::Detail => {
-                    app.selected_calc().map(|c| c.id.to_string())
-                }
-                Pane::RunList => {
-                    app.selected_run().map(|r| r.id.to_string())
-                }
+                Pane::CalcList | Pane::Detail => app.selected_calc().map(|c| c.id.to_string()),
+                Pane::RunList => app.selected_run().map(|r| r.id.to_string()),
             };
             if let Some(t) = text {
                 app.status_bar = format!("Yanked: {t}");
@@ -378,7 +390,8 @@ fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> Vec<Effect> {
         // Bulk cancel: in visual mode cancel all selected runs; otherwise single.
         Action::Cancel => {
             if let Some(range) = app.visual_range() {
-                let ids: Vec<_> = app.visible_runs()
+                let ids: Vec<_> = app
+                    .visible_runs()
                     .iter()
                     .enumerate()
                     .filter(|(i, _)| range.contains(i))
@@ -387,7 +400,8 @@ fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> Vec<Effect> {
                 let n = ids.len();
                 app.visual_anchor = None;
                 app.status_bar = format!("Cancelling {n} runs…");
-                return ids.into_iter()
+                return ids
+                    .into_iter()
                     .map(|run_id| Effect::Network(NetworkCmd::CancelRun { run_id }))
                     .collect();
             }
@@ -416,17 +430,21 @@ fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> Vec<Effect> {
         // Bulk retry: in visual mode retry all failed calcs across selected runs.
         Action::Retry => {
             if let Some(range) = app.visual_range() {
-                let effects: Vec<_> = app.visible_runs()
+                let effects: Vec<_> = app
+                    .visible_runs()
                     .iter()
                     .enumerate()
                     .filter(|(i, _)| range.contains(i))
                     .flat_map(|(_, run)| {
-                        run.calculations.iter()
+                        run.calculations
+                            .iter()
                             .filter(|c| c.status == CalcStatus::Failed)
-                            .map(|c| Effect::Network(NetworkCmd::RetryCalc {
-                                run_id: run.id.clone(),
-                                calc_id: c.id.clone(),
-                            }))
+                            .map(|c| {
+                                Effect::Network(NetworkCmd::RetryCalc {
+                                    run_id: run.id.clone(),
+                                    calc_id: c.id.clone(),
+                                })
+                            })
                             .collect::<Vec<_>>()
                     })
                     .collect();
@@ -442,7 +460,10 @@ fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> Vec<Effect> {
                 if calc.status == CalcStatus::Failed {
                     let cid = calc.id.clone();
                     let rid = calc.run_id.clone();
-                    return vec![Effect::Network(NetworkCmd::RetryCalc { run_id: rid, calc_id: cid })];
+                    return vec![Effect::Network(NetworkCmd::RetryCalc {
+                        run_id: rid,
+                        calc_id: cid,
+                    })];
                 } else {
                     app.status_bar = "Only failed calculations can be retried".into();
                 }
@@ -456,7 +477,11 @@ fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> Vec<Effect> {
     vec![]
 }
 
-fn handle_confirm(app: &mut App, key: crossterm::event::KeyEvent, dialog: ConfirmDialog) -> Vec<Effect> {
+fn handle_confirm(
+    app: &mut App,
+    key: crossterm::event::KeyEvent,
+    dialog: ConfirmDialog,
+) -> Vec<Effect> {
     match key.code {
         crossterm::event::KeyCode::Char('y') | crossterm::event::KeyCode::Char('Y') => {
             app.overlay = Overlay::None;
@@ -466,15 +491,31 @@ fn handle_confirm(app: &mut App, key: crossterm::event::KeyEvent, dialog: Confir
                     return vec![Effect::Network(NetworkCmd::CancelRun { run_id: rid })];
                 }
                 ConfirmAction::CancelCalc(cid) => {
-                    if let Some(calc) = app.runs.iter().flat_map(|r| r.calculations.iter()).find(|c| c.id == cid) {
+                    if let Some(calc) = app
+                        .runs
+                        .iter()
+                        .flat_map(|r| r.calculations.iter())
+                        .find(|c| c.id == cid)
+                    {
                         let rid = calc.run_id.clone();
-                        return vec![Effect::Network(NetworkCmd::CancelCalc { run_id: rid, calc_id: cid })];
+                        return vec![Effect::Network(NetworkCmd::CancelCalc {
+                            run_id: rid,
+                            calc_id: cid,
+                        })];
                     }
                 }
                 ConfirmAction::RetryCalc(cid) => {
-                    if let Some(calc) = app.runs.iter().flat_map(|r| r.calculations.iter()).find(|c| c.id == cid) {
+                    if let Some(calc) = app
+                        .runs
+                        .iter()
+                        .flat_map(|r| r.calculations.iter())
+                        .find(|c| c.id == cid)
+                    {
                         let rid = calc.run_id.clone();
-                        return vec![Effect::Network(NetworkCmd::RetryCalc { run_id: rid, calc_id: cid })];
+                        return vec![Effect::Network(NetworkCmd::RetryCalc {
+                            run_id: rid,
+                            calc_id: cid,
+                        })];
                     }
                 }
             }
@@ -486,7 +527,11 @@ fn handle_confirm(app: &mut App, key: crossterm::event::KeyEvent, dialog: Confir
     vec![]
 }
 
-fn handle_command_input(app: &mut App, key: crossterm::event::KeyEvent, mut buf: String) -> Vec<Effect> {
+fn handle_command_input(
+    app: &mut App,
+    key: crossterm::event::KeyEvent,
+    mut buf: String,
+) -> Vec<Effect> {
     match key.code {
         crossterm::event::KeyCode::Esc => {
             app.overlay = Overlay::None;
@@ -513,7 +558,11 @@ fn execute_command(app: &mut App, cmd: &str) -> Vec<Effect> {
 
     if let Some(query) = cmd.strip_prefix('/') {
         // Search command.
-        app.filter.search = if query.is_empty() { None } else { Some(query.to_string()) };
+        app.filter.search = if query.is_empty() {
+            None
+        } else {
+            Some(query.to_string())
+        };
         app.filter.search_pos = 0;
         return vec![];
     }
@@ -803,7 +852,11 @@ mod tests {
         }
         let (app, effects) = update(app, key(KeyCode::Enter));
         assert!(effects.is_empty());
-        assert!(app.status_bar.contains("Usage"), "expected usage message, got: {}", app.status_bar);
+        assert!(
+            app.status_bar.contains("Usage"),
+            "expected usage message, got: {}",
+            app.status_bar
+        );
     }
 
     // ── Visual mode ───────────────────────────────────────────────────────────
@@ -843,11 +896,15 @@ mod tests {
         (app, _) = update(app, key(KeyCode::Char('j')));
         assert_eq!(app.visual_range(), Some(0..=2));
         let (app, effects) = update(app, key(KeyCode::Char('X')));
-        let cancel_count = effects.iter()
+        let cancel_count = effects
+            .iter()
             .filter(|e| matches!(e, Effect::Network(NetworkCmd::CancelRun { .. })))
             .count();
         assert_eq!(cancel_count, 3);
-        assert!(app.visual_anchor.is_none(), "visual mode should be cleared after bulk op");
+        assert!(
+            app.visual_anchor.is_none(),
+            "visual mode should be cleared after bulk op"
+        );
     }
 
     // ── Bulk retry ────────────────────────────────────────────────────────────
@@ -867,7 +924,8 @@ mod tests {
         (app, _) = update(app, key(KeyCode::Char('v')));
         (app, _) = update(app, key(KeyCode::Char('j'))); // extend to row 1
         let (_, effects) = update(app, key(KeyCode::Char('R')));
-        let retry_count = effects.iter()
+        let retry_count = effects
+            .iter()
             .filter(|e| matches!(e, Effect::Network(NetworkCmd::RetryCalc { .. })))
             .count();
         assert_eq!(retry_count, 1, "only the failed calc should be retried");
@@ -889,6 +947,10 @@ mod tests {
         let app = App::new();
         let (app, effects) = update(app, key(KeyCode::Char('r')));
         assert!(app.loading);
-        assert!(effects.iter().any(|e| matches!(e, Effect::Network(NetworkCmd::RefreshRuns))));
+        assert!(
+            effects
+                .iter()
+                .any(|e| matches!(e, Effect::Network(NetworkCmd::RefreshRuns)))
+        );
     }
 }
