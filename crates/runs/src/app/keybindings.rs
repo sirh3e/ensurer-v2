@@ -75,7 +75,9 @@ pub fn dispatch(key: &KeyEvent) -> Action {
         }
         (KeyModifiers::NONE, KeyCode::Char(':')) => Action::CommandMode,
         (KeyModifiers::NONE, KeyCode::Char('f')) => Action::FilterOverlay,
-        (KeyModifiers::NONE, KeyCode::Char('?')) => Action::Help,
+        (KeyModifiers::NONE, KeyCode::Char('?')) | (KeyModifiers::SHIFT, KeyCode::Char('?')) => {
+            Action::Help
+        }
         (KeyModifiers::SHIFT, KeyCode::Char('D')) | (KeyModifiers::NONE, KeyCode::Char('D')) => {
             Action::Dashboard
         }

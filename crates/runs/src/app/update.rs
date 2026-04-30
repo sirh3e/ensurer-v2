@@ -193,10 +193,7 @@ fn handle_key(app: &mut App, key: crossterm::event::KeyEvent) -> Vec<Effect> {
     match action {
         Action::Quit => {
             if matches!(app.screen, Screen::RunList) {
-                app.overlay = Overlay::Confirm(ConfirmDialog {
-                    message: "Quit? (y/N)".into(),
-                    action: ConfirmAction::Quit,
-                });
+                return vec![Effect::Quit];
             } else {
                 app.screen = Screen::RunList;
                 app.pane = Pane::RunList;
@@ -931,13 +928,30 @@ mod tests {
         assert_eq!(retry_count, 1, "only the failed calc should be retried");
     }
 
-    // ── Ctrl-c ────────────────────────────────────────────────────────────────
+    // ── Ctrl-c / q ───────────────────────────────────────────────────────────
 
     #[test]
-    fn ctrl_c_on_run_list_shows_confirm() {
+    fn ctrl_c_on_run_list_quits_immediately() {
         let app = App::new();
-        let (app, _) = update(app, ctrl(KeyCode::Char('c')));
-        assert!(matches!(app.overlay, Overlay::Confirm(_)));
+        let (_, effects) = update(app, ctrl(KeyCode::Char('c')));
+        assert!(effects.iter().any(|e| matches!(e, Effect::Quit)));
+    }
+
+    #[test]
+    fn q_on_run_list_quits_immediately() {
+        let app = App::new();
+        let (_, effects) = update(app, key(KeyCode::Char('q')));
+        assert!(effects.iter().any(|e| matches!(e, Effect::Quit)));
+    }
+
+    #[test]
+    fn q_on_run_detail_goes_back_to_run_list() {
+        let mut app = app_with_runs(1);
+        (app, _) = update(app, key(KeyCode::Enter));
+        assert!(matches!(app.screen, Screen::RunDetail(_)));
+        let (app, effects) = update(app, key(KeyCode::Char('q')));
+        assert!(effects.iter().all(|e| !matches!(e, Effect::Quit)));
+        assert_eq!(app.screen, Screen::RunList);
     }
 
     // ── Refresh ───────────────────────────────────────────────────────────────
