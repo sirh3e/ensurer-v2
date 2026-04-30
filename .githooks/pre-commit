@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Pre-commit hook: enforce formatting and no clippy warnings.
+set -euo pipefail
+
+echo "→ cargo fmt check..."
+if ! cargo fmt --all -- --check 2>&1; then
+    echo ""
+    echo "  Formatting issues found. Run: cargo fmt --all"
+    exit 1
+fi
+
+echo "→ cargo clippy..."
+if ! cargo clippy --workspace --all-targets -- -D warnings 2>&1; then
+    echo ""
+    echo "  Clippy errors found. Fix them before committing."
+    exit 1
+fi
+
+echo "✓ pre-commit checks passed"
