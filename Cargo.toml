@@ -1,0 +1,107 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/common",
+    "crates/runsd",
+    "crates/runs",
+]
+
+[workspace.package]
+version   = "0.1.0"
+edition   = "2024"
+authors   = ["sirh3e"]
+license   = "MIT"
+
+[workspace.dependencies]
+# async runtime
+tokio        = { version = "1", features = ["full"] }
+
+# serialization
+serde        = { version = "1", features = ["derive"] }
+serde_json   = "1"
+toml         = "0.8"
+
+# database
+sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite", "uuid", "chrono", "macros"] }
+
+# http server
+axum         = { version = "0.8" }
+tower        = "0.5"
+tower-http   = { version = "0.6", features = ["trace"] }
+hyper        = { version = "1", features = ["full"] }
+hyper-util   = { version = "0.1", features = ["tokio", "server", "http1", "client"] }
+http-body-util = "0.1"
+tokio-util   = { version = "0.7", features = ["compat"] }
+
+# http client
+reqwest      = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+
+# id generation
+uuid         = { version = "1", features = ["v7", "serde"] }
+
+# time
+chrono       = { version = "0.4", features = ["serde"] }
+
+# config
+figment      = { version = "0.10", features = ["toml", "env"] }
+clap         = { version = "4", features = ["derive", "env"] }
+
+# tracing / logging
+tracing             = "0.1"
+tracing-subscriber  = { version = "0.3", features = ["env-filter", "json", "fmt", "registry"] }
+tracing-appender    = "0.2"
+
+# metrics
+metrics             = "0.23"
+
+# error handling
+thiserror    = "2"
+anyhow       = "1"
+
+# TUI
+ratatui      = "0.29"
+crossterm    = { version = "0.28", features = ["event-stream"] }
+
+# SSE / streams
+futures      = "0.3"
+futures-util = "0.3"
+async-stream = "0.3"
+
+# crypto (idempotency key)
+sha2         = "0.10"
+hex          = "0.4"
+
+# async trait
+async-trait  = "0.1"
+
+# misc
+bytes        = "1"
+rand         = "0.8"
+tokio-stream = "0.1"
+clap_complete = "4"
+
+# GraphQL
+async-graphql      = { version = "7", features = ["chrono", "uuid"] }
+async-graphql-axum = "7"
+
+# ── Dev profile: optimise for fast incremental rebuilds ───────────────────────
+[profile.dev]
+# More codegen units → more parallelism, faster incremental builds.
+codegen-units = 256
+# Minimal debug info keeps link time down; still enough for backtraces.
+debug = 1
+# Unpacked split-debuginfo avoids re-linking the full debug binary on macOS.
+split-debuginfo = "unpacked"
+incremental = true
+
+# Heavy proc-macro / build-script deps compile faster with a little
+# optimisation — avoids spending wall-time in unoptimised macro expansion.
+[profile.dev.build-override]
+opt-level = 1
+codegen-units = 256
+
+# ── Release profile ───────────────────────────────────────────────────────────
+[profile.release]
+opt-level     = 3
+lto           = "thin"
+codegen-units = 1

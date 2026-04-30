@@ -1,0 +1,18 @@
+# ── Project-level Cargo config ────────────────────────────────────────────────
+#
+# Local developer overrides (sccache, vendored sources, mold linker) belong in
+# your personal ~/.cargo/config.toml so they never reach CI.
+#
+# Example additions for local development:
+#
+#   [build]
+#   rustc-wrapper = "/opt/homebrew/bin/sccache"
+#
+#   [source.crates-io]
+#   replace-with = "vendored-sources"
+#
+#   [source.vendored-sources]
+#   directory = "vendor"
+#
+#   [target.x86_64-unknown-linux-gnu]
+#   linker = "/opt/homebrew/bin/mold"

@@ -1,0 +1,42 @@
+# Build output
+/target/
+
+# Vendored dependencies (kept locally, not committed — see .cargo/config.toml)
+/vendor/
+
+# Cargo lock is committed for binaries, kept here as a note
+# Cargo.lock
+
+# SQLite databases
+*.db
+*.db-shm
+*.db-wal
+
+# Runtime socket
+*.sock
+
+# Logs
+*.log
+*.log.*
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+# sccache (local cache, not project-specific)
+.sccache/
+
+# Environment overrides
+.env
+.env.local
