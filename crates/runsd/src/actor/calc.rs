@@ -64,50 +64,138 @@ impl CalcApiClient for ReqwestCalcClient {
         calc_id: &'a CalcId,
     ) -> Pin<Box<dyn Future<Output = ApiOutcome> + Send + 'a>> {
         Box::pin(async move {
-            let url = format!("{}/calculations/{}", self.cfg.base_url, kind);
+            // ── Phase 1: launch the task ──────────────────────────────────────
+            let launch_url = format!("{}{}", self.cfg.base_url, self.cfg.launch_path);
+            let mut launch_body = input_json.clone();
+            if let Some(obj) = launch_body.as_object_mut() {
+                obj.insert("kind".into(), serde_json::Value::String(kind.to_string()));
+            }
+
             let mut req = self
                 .http
-                .post(&url)
+                .post(&launch_url)
                 .timeout(Duration::from_secs(self.cfg.request_timeout_s))
-                .json(input_json);
+                .json(&launch_body);
 
             if self.cfg.supports_idempotency {
                 req = req.header("Idempotency-Key", idempotency_key);
             }
 
-            match req.send().await {
-                Err(e) => ApiOutcome::TransientError {
-                    message: e.to_string(),
-                },
+            let task_id = match req.send().await {
+                Err(e) => {
+                    return ApiOutcome::TransientError {
+                        message: e.to_string(),
+                    };
+                }
                 Ok(resp) => {
                     let status = resp.status();
-                    if status.is_success() {
-                        let result_dir = data_dir.join("results").join(calc_id.0.to_string());
-                        let _ = tokio::fs::create_dir_all(&result_dir).await;
-                        let result_path = result_dir.join("result.json");
-                        match resp.bytes().await {
-                            Ok(bytes) => {
+                    if status == reqwest::StatusCode::TOO_MANY_REQUESTS
+                        || status == reqwest::StatusCode::REQUEST_TIMEOUT
+                        || status.is_server_error()
+                    {
+                        return ApiOutcome::TransientError {
+                            message: format!("launch HTTP {}", status),
+                        };
+                    }
+                    if !status.is_success() {
+                        return ApiOutcome::PermanentError {
+                            message: format!("launch HTTP {}", status),
+                        };
+                    }
+                    match resp.json::<serde_json::Value>().await {
+                        Err(e) => {
+                            return ApiOutcome::TransientError {
+                                message: format!("launch response parse error: {e}"),
+                            };
+                        }
+                        Ok(body) => body
+                            .get("taskId")
+                            .or_else(|| body.get("task_id"))
+                            .or_else(|| body.get("id"))
+                            .and_then(|v| v.as_str())
+                            .map(|s| s.to_string())
+                            .unwrap_or_default(),
+                    }
+                }
+            };
+
+            // ── Phase 2: poll until the task finishes ─────────────────────────
+            let status_url = format!("{}{}", self.cfg.base_url, self.cfg.status_path);
+            let poll_interval = Duration::from_millis(self.cfg.poll_interval_ms);
+
+            loop {
+                tokio::time::sleep(poll_interval).await;
+
+                let poll_resp = self
+                    .http
+                    .get(&status_url)
+                    .query(&[("taskId", &task_id)])
+                    .timeout(Duration::from_secs(self.cfg.request_timeout_s))
+                    .send()
+                    .await;
+
+                match poll_resp {
+                    Err(e) => {
+                        return ApiOutcome::TransientError {
+                            message: e.to_string(),
+                        };
+                    }
+                    Ok(resp) => {
+                        let http_status = resp.status();
+                        if http_status == reqwest::StatusCode::TOO_MANY_REQUESTS
+                            || http_status == reqwest::StatusCode::REQUEST_TIMEOUT
+                            || http_status.is_server_error()
+                        {
+                            return ApiOutcome::TransientError {
+                                message: format!("status HTTP {}", http_status),
+                            };
+                        }
+                        if !http_status.is_success() {
+                            return ApiOutcome::PermanentError {
+                                message: format!("status HTTP {}", http_status),
+                            };
+                        }
+
+                        let body = match resp.json::<serde_json::Value>().await {
+                            Ok(b) => b,
+                            Err(e) => {
+                                return ApiOutcome::TransientError {
+                                    message: format!("status response parse error: {e}"),
+                                };
+                            }
+                        };
+
+                        let task_status = body
+                            .get("status")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_lowercase();
+
+                        match task_status.as_str() {
+                            "completed" | "succeeded" | "success" => {
+                                let result_dir =
+                                    data_dir.join("results").join(calc_id.0.to_string());
+                                let _ = tokio::fs::create_dir_all(&result_dir).await;
+                                let result_path = result_dir.join("result.json");
+                                let bytes = serde_json::to_vec(&body).unwrap_or_default();
                                 if tokio::fs::write(&result_path, &bytes).await.is_err() {
                                     return ApiOutcome::TransientError {
                                         message: "failed to write result to disk".into(),
                                     };
                                 }
-                                ApiOutcome::Succeeded { result_path }
+                                return ApiOutcome::Succeeded { result_path };
                             }
-                            Err(e) => ApiOutcome::TransientError {
-                                message: e.to_string(),
-                            },
-                        }
-                    } else if status == reqwest::StatusCode::TOO_MANY_REQUESTS
-                        || status == reqwest::StatusCode::REQUEST_TIMEOUT
-                        || status.is_server_error()
-                    {
-                        ApiOutcome::TransientError {
-                            message: format!("HTTP {}", status),
-                        }
-                    } else {
-                        ApiOutcome::PermanentError {
-                            message: format!("HTTP {}", status),
+                            "failed" | "error" => {
+                                let msg = body
+                                    .get("error")
+                                    .or_else(|| body.get("message"))
+                                    .and_then(|v| v.as_str())
+                                    .unwrap_or("task failed")
+                                    .to_string();
+                                return ApiOutcome::PermanentError { message: msg };
+                            }
+                            // "running", "pending", "" → keep polling
+                            _ => continue,
                         }
                     }
                 }

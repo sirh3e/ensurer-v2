@@ -41,6 +41,12 @@ pub struct LeaseConfig {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExternalApiConfig {
     pub base_url: String,
+    /// Path called to start a calculation task (POST).
+    pub launch_path: String,
+    /// Path called to poll task status (GET).
+    pub status_path: String,
+    /// Milliseconds between status-poll retries.
+    pub poll_interval_ms: u64,
     pub request_timeout_s: u64,
     pub supports_idempotency: bool,
 }
@@ -75,6 +81,9 @@ impl Default for Config {
             },
             external_api: ExternalApiConfig {
                 base_url: "https://example.com".to_string(),
+                launch_path: "/api/launch-data-points-loading-task-status".to_string(),
+                status_path: "/api/get-data-points-loading-task-status".to_string(),
+                poll_interval_ms: 2_000,
                 request_timeout_s: 30,
                 supports_idempotency: true,
             },

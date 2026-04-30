@@ -30,8 +30,10 @@
 
 # ── External API client ───────────────────────────────────────────────────────
 #
-# runsd forwards each calculation to an external HTTP service.
-# Contract: POST {base_url}/calculations/{kind}
+# runsd drives each calculation through a two-step async flow:
+#   1. POST {base_url}{launch_path}   — start the task
+#   2. GET  {base_url}{status_path}   — poll until completed/failed
+#
 # See docs/external-api.md for the full request / response specification.
 
 [external_api]
@@ -39,6 +41,18 @@
 # Root URL of the external calculation API — no trailing slash.
 # RUNSD_EXTERNAL_API_BASE_URL overrides this.
 base_url = "https://api.example.com"
+
+# Path used to launch a calculation task (POST).
+# Default: /api/launch-data-points-loading-task-status
+launch_path = "/api/launch-data-points-loading-task-status"
+
+# Path used to poll task status (GET ?taskId=<id>).
+# Default: /api/get-data-points-loading-task-status
+status_path = "/api/get-data-points-loading-task-status"
+
+# Milliseconds to wait between status-poll requests.
+# Default: 2000
+poll_interval_ms = 2000
 
 # Per-request timeout in seconds. Requests that exceed this are treated as
 # transient errors and retried according to [retry] settings.
